@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+
+    <head>
+        <% include templates/header_v1 %>
+        <title>DadHive</title>
+    </head>
+
+    <body class="">
+
+        <div class="page-wrapper">
+            
+            <% include templates/navigation_v1 %>
+
+            <div class="main">
+                <div class="main-inner">
+                    <div class="container">
+                        <div class="content">
+                            <div class="row">
+                                <div class="col-sm-4 col-sm-offset-4">
+                                    <div class="page-title">
+                                        <h1>Login</h1>
+                                    </div><!-- /.page-title -->
+
+                                    <% include templates/auth_alerts_v1 %>
+
+                                    <form role="form" method="post" name="login-form" id="login-form">
+                                        <div class="form-group">
+                                            <label for="login-form-email">E-mail</label>
+                                            <input type="email" class="form-control" name="emailaddress" id="login-form-email">
+                                        </div><!-- /.form-group -->
+
+                                        <div class="form-group">
+                                            <label for="login-form-password">Password</label>
+                                            <input type="password" class="form-control" name="password" id="login-form-password">
+                                        </div><!-- /.form-group -->
+
+                                        <a type="submit" class="btn btn-primary pull-right" href="#" onclick="loginUser();">Login</a>
+                                    </form>
+                                </div><!-- /.col-sm-4 -->
+                            </div><!-- /.row -->
+                        </div><!-- /.content -->
+                    </div><!-- /.container -->
+                </div><!-- /.main-inner -->
+            </div><!-- /.main -->
+
+            <% include templates/footer_v1%>
+
+        </div><!-- /.page-wrapper -->
+
+        <% include templates/scripts_v1 %>
+        <% include templates/custom_scripts_v1 %>
+        
+    </body>
+</html>

@@ -1,0 +1,435 @@
+<!-- Custom Script -->
+<script>
+    function search(by) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open('POST', '/auth/preregister', true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.onreadystatechange = function (data) {
+            console.log(data['target']);
+            if (xhttp.readyState == XMLHttpRequest.DONE && xhttp.status == 200) {
+                document.getElementById("error-alert").style.display = "none";
+                document.getElementById("success-alert").style.display = "block";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "none";
+                document.getElementById('pre-reg').reset()
+            } else {
+                document.getElementById("error-alert").style.display = "block";
+                document.getElementById("success-alert").style.display = "none";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "block";
+            }
+        }
+        xhttp.addEventListener('load', function (event) {
+            console.log('Yeah! Data sent and response loaded.');
+        });
+
+        // Define what happens in case of error
+        xhttp.addEventListener('error', function (event) {
+            console.log('Oups! Something goes wrong.');
+        });
+
+        xhttp.send(JSON.stringify({
+            searchString: name,
+            uemail: email,
+            umar_status: mar_status,
+            uchildren: children,
+            ulinkedin: linkedin,
+            ufacebook: facebook,
+            uinstagram: instagram
+        }));
+    }
+
+    function registerUser() {
+        // document.getElementById("loader").style.display = "block";
+        var form = document.forms["registration-form"];
+
+        var email = form["email"].value;
+        var name = form["name"].value;
+        var password = form["password"].value;
+        var kidsCount = form["children"].value;
+        var maritalStatus = form["mar_status"].value;
+        var linkedin = form["linkedin_usr"].value;
+        var facebook = form["facebook_usr"].value;
+        var instagram = form["instagram_usr"].value;
+        var ageRanges = form["ageRanges"].value;
+        var kidsNames = form["kidsNames"].value;
+
+        if (emailValidation(email) == true) {
+            console.log('Email is valid');
+
+            if (!name || !email || !password ||  !maritalStatus || !kidsCount || !ageRanges || !kidsNames ) {
+
+                // document.getElementById("loader").style.display = "none";
+                document.getElementById("error-alert").style.display = "block";
+                document.getElementById("success-alert").style.display = "none";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "none";
+                document.getElementById("error-generic-alert").style.display = "none";
+                form.reset();
+
+            } else {
+
+                var xhttp = new XMLHttpRequest();
+                xhttp.open('POST','/api/v1/createUser', true);
+                xhttp.setRequestHeader("Content-type", "application/json");
+                xhttp.onreadystatechange = function(data) {
+
+                    //  TODO:- remove before merging into master
+                    console.log(data['target']);
+                    console.log('-------');
+
+                    if(xhttp.readyState == XMLHttpRequest.DONE && xhttp.status == 200) {
+
+                        console.log(JSON.parse(xhttp.response));
+
+                        var response = JSON.parse(xhttp.response);
+                        if (response.error == null) {
+
+                            // document.getElementById("loader").style.display = "none";
+                            document.getElementById("error-alert").style.display = "none";
+                            document.getElementById("success-alert").style.display = "block";
+                            document.getElementById("error-email-alert").style.display = "none";
+                            document.getElementById("error-dup-alert").style.display = "none";
+                            document.getElementById("error-generic-alert").style.display = "none";
+
+                            form.reset();
+
+                        } else {
+
+                            // document.getElementById("loader").style.display = "none";
+                            document.getElementById("error-alert").style.display = "none";
+                            document.getElementById("success-alert").style.display = "none";
+                            document.getElementById("error-email-alert").style.display = "none";
+                            document.getElementById("error-dup-alert").style.display = "none";
+                            document.getElementById("error-generic-alert").style.display = "block";
+                            document.getElementById("error-text").innerHTML = response.error.message;
+
+                        }
+
+                    } else {
+
+                        // document.getElementById("loader").style.display = "none";
+                        document.getElementById("error-alert").style.display = "none";
+                        document.getElementById("success-alert").style.display = "none";
+                        document.getElementById("error-email-alert").style.display = "none";
+                        document.getElementById("error-dup-alert").style.display = "none";
+                        document.getElementById("error-generic-alert").style.display = "block";
+
+                    }
+                } 
+                xhttp.addEventListener('load', function(event) {
+                    console.log('Yeah! Data sent and response loaded.');
+                });
+
+                // Define what happens in case of error
+                xhttp.addEventListener('error', function(event) {
+
+                    console.log('Oups! Something went wrong.');
+                    // document.getElementById("loader").style.display = "none";
+                    document.getElementById("error-alert").style.display = "none";
+                    document.getElementById("success-alert").style.display = "none";
+                    document.getElementById("error-email-alert").style.display = "none";
+                    document.getElementById("error-dup-alert").style.display = "none";
+                    document.getElementById("error-generic-alert").style.display = "block";
+                    form.reset();
+
+                });
+                
+                xhttp.send(JSON.stringify({
+                    name: name,
+                    email: email,
+                    maritalStatus: maritalStatus,
+                    kidsCount: kidsCount,
+                    password: password,
+                    linkedin: linkedin,
+                    facebook: facebook,
+                    instagram: instagram,
+                    ageRanges: ageRanges,
+                    kidsNames: kidsNames
+                })); 
+
+            }
+        } else {
+
+            console.log('Email is not valid');
+            // document.getElementById("loader").style.display = "none";
+            document.getElementById("error-alert").style.display = "none";
+            document.getElementById("success-alert").style.display = "none";
+            document.getElementById("error-email-alert").style.display = "block";
+            document.getElementById("error-dup-alert").style.display = "none";
+
+        }
+    }
+
+    function loginUser() {
+        // document.getElementById("loader").style.display = "block";
+        var form = document.forms["login-form"];
+
+        var email = form["emailaddress"].value;
+        var password = form["password"].value;
+
+        if (emailValidation(email) == true) {
+            console.log('Email is valid');
+
+            if (!email || !password) {
+
+                // document.getElementById("loader").style.display = "none";
+                document.getElementById("error-alert").style.display = "block";
+                document.getElementById("success-alert").style.display = "none";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "none";
+                document.getElementById("error-generic-alert").style.display = "none";
+                form.reset();
+                
+            } else {
+
+                var xhttp = new XMLHttpRequest();
+                xhttp.open('POST','/api/v1/login', true);
+                xhttp.setRequestHeader("Content-type", "application/json");
+                xhttp.onreadystatechange = function(data) {
+
+                    //  TODO:- remove before merging into master
+                    console.log(data['target']);
+                    console.log('-------');
+
+                    if(xhttp.readyState == XMLHttpRequest.DONE && xhttp.status == 200) {
+
+                        console.log(JSON.parse(xhttp.response));
+
+                        var response = JSON.parse(xhttp.response);
+                        if (response.error == null) {
+
+                            // document.getElementById("loader").style.display = "none";
+                            document.getElementById("error-alert").style.display = "none";
+                            document.getElementById("success-alert").style.display = "block";
+                            document.getElementById("error-email-alert").style.display = "none";
+                            document.getElementById("error-dup-alert").style.display = "none";
+                            document.getElementById("error-generic-alert").style.display = "none";
+
+                            form.reset();
+
+                            location.reload();
+
+                        } else {
+
+                            // document.getElementById("loader").style.display = "none";
+                            document.getElementById("error-alert").style.display = "none";
+                            document.getElementById("success-alert").style.display = "none";
+                            document.getElementById("error-email-alert").style.display = "none";
+                            document.getElementById("error-dup-alert").style.display = "none";
+                            document.getElementById("error-generic-alert").style.display = "block";
+                            document.getElementById("error-text").innerHTML = response.error.message;
+
+                        }
+
+                    } else {
+
+                        // document.getElementById("loader").style.display = "none";
+                        document.getElementById("error-alert").style.display = "none";
+                        document.getElementById("success-alert").style.display = "none";
+                        document.getElementById("error-email-alert").style.display = "none";
+                        document.getElementById("error-dup-alert").style.display = "none";
+                        document.getElementById("error-generic-alert").style.display = "block";
+
+                    }
+                } 
+                xhttp.addEventListener('load', function(event) {
+                    console.log('Yeah! Data sent and response loaded.');
+                });
+
+                // Define what happens in case of error
+                xhttp.addEventListener('error', function(event) {
+
+                    console.log('Oups! Something went wrong.');
+                    // document.getElementById("loader").style.display = "none";
+                    document.getElementById("error-alert").style.display = "none";
+                    document.getElementById("success-alert").style.display = "none";
+                    document.getElementById("error-email-alert").style.display = "none";
+                    document.getElementById("error-dup-alert").style.display = "none";
+                    document.getElementById("error-generic-alert").style.display = "block";
+                    form.reset();
+
+                });
+                
+                xhttp.send(JSON.stringify({
+                    emailaddress: email,
+                    password: password,
+                })); 
+
+            }
+        } else {
+
+            console.log('Email is not valid');
+            // document.getElementById("loader").style.display = "none";
+            document.getElementById("error-alert").style.display = "none";
+            document.getElementById("success-alert").style.display = "none";
+            document.getElementById("error-email-alert").style.display = "block";
+            document.getElementById("error-dup-alert").style.display = "none";
+
+        }
+    }
+
+    function emailValidation(elementValue) {  
+        var emailPattern = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+        return emailPattern.test(elementValue); 
+    }  
+
+    function dismissAlert() {
+
+        document.getElementById("loader").style.display = "none";
+        document.getElementById("error-alert").style.display = "none";
+        document.getElementById("success-alert").style.display = "none";
+        document.getElementById("error-email-alert").style.display = "none";
+        document.getElementById("error-dup-alert").style.display = "none";
+        document.getElementById("error-generic-alert").style.display = "none";
+
+    }
+
+    function editName(user) {
+        var form = document.forms["name-form"];
+        var name = form["name"].value;
+
+        var data = new Object();
+
+         if (name) {
+            data.name = name
+        }
+
+        data.userId = user.uid;
+        console.log(data);
+
+        if (!name) {
+
+            // document.getElementById("loader").style.display = "none";
+            document.getElementById("error-alert").style.display = "block";
+            document.getElementById("success-alert").style.display = "none";
+            document.getElementById("error-email-alert").style.display = "none";
+            document.getElementById("error-dup-alert").style.display = "none";
+            document.getElementById("error-generic-alert").style.display = "none";
+            form.reset();
+
+        } else {
+
+            performNetworkingRequest("POST", '/api/v1/editUserProfile', data , function(results, success, error) {
+                if (error === null) {
+                    form.reset();
+                    location.reload();
+                } else {
+                    document.getElementById("error-alert").style.display = "block";
+                    document.getElementById("success-alert").style.display = "none";
+                    document.getElementById("error-email-alert").style.display = "none";
+                    document.getElementById("error-dup-alert").style.display = "none";
+                    document.getElementById("error-generic-alert").style.display = "none";
+                }
+            });
+
+        }
+    }
+
+    function editSocial(user) {
+        var form = document.forms["social-form"];
+        var socialFacebook = form["facebook"].value;
+        var socialLinkedIn = form["linkedin"].value;
+        var socialInstagram = form["instagram"].value;
+
+        var data = new Object();
+
+        if (socialFacebook) {
+            data.socialFacebook = socialFacebook
+        }
+
+        if (socialLinkedIn) {
+            data.socialLinkedIn = socialLinkedIn
+        }
+
+        if (socialInstagram) {
+            data.socialInstagram = socialInstagram
+        }
+
+        data.userId = user.uid;
+        console.log(data);
+
+        performNetworkingRequest("POST", '/api/v1/editUserProfile', data , function(results, success, error) {
+            if (error === null) {
+                form.reset();
+                location.reload();
+            } else {
+                document.getElementById("error-alert").style.display = "block";
+                document.getElementById("success-alert").style.display = "none";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "none";
+                document.getElementById("error-generic-alert").style.display = "none";
+            }
+        });
+
+    }
+
+    function performNetworkingRequest(httpMethod, url, data, callback) {
+        var xhttp = new XMLHttpRequest();
+        xhttp.open(httpMethod, url, true);
+        xhttp.setRequestHeader("Content-type", "application/json");
+        xhttp.setRequestHeader("agent", "web");
+        xhttp.onreadystatechange = function(data) {
+
+            if (xhttp.readyState == XMLHttpRequest.DONE && xhttp.status == 200) {
+                var response = JSON.parse(xhttp.response);
+                if (response.error == null) {
+
+                    // document.getElementById("loader").style.display = "none";
+                    document.getElementById("error-alert").style.display = "none";
+                    document.getElementById("success-alert").style.display = "block";
+                    document.getElementById("error-email-alert").style.display = "none";
+                    document.getElementById("error-dup-alert").style.display = "none";
+                    document.getElementById("error-generic-alert").style.display = "none";
+
+                    callback(xhttp.response, true, null);
+
+                } else {
+
+                    // document.getElementById("loader").style.display = "none";
+                    document.getElementById("error-alert").style.display = "none";
+                    document.getElementById("success-alert").style.display = "none";
+                    document.getElementById("error-email-alert").style.display = "none";
+                    document.getElementById("error-dup-alert").style.display = "none";
+                    document.getElementById("error-generic-alert").style.display = "block";
+                    document.getElementById("error-text").innerHTML = response.error.message;
+
+                    callback(null, false, { "errorMessage" : "There was an error with the request" });
+                }
+
+            } else {
+
+                // document.getElementById("loader").style.display = "none";
+                document.getElementById("error-alert").style.display = "none";
+                document.getElementById("success-alert").style.display = "none";
+                document.getElementById("error-email-alert").style.display = "none";
+                document.getElementById("error-dup-alert").style.display = "none";
+                document.getElementById("error-generic-alert").style.display = "block";
+
+                callback(null, false, { "errorMessage" : "There was an error with the request" });
+
+            }
+        } 
+        xhttp.addEventListener('load', function(event) {
+            console.log('Yeah! Data sent and response loaded.');
+        });
+
+        // Define what happens in case of error
+        xhttp.addEventListener('error', function(event) {
+
+            console.log('Oups! Something went wrong.');
+            // document.getElementById("loader").style.display = "none";
+            document.getElementById("error-alert").style.display = "none";
+            document.getElementById("success-alert").style.display = "none";
+            document.getElementById("error-email-alert").style.display = "none";
+            document.getElementById("error-dup-alert").style.display = "none";
+            document.getElementById("error-generic-alert").style.display = "block";
+
+            callback(null, false, { "errorMessage" : "There was an error with the request" });
+
+        });
+        
+        console.log(data);
+        xhttp.send(JSON.stringify(data)); 
+    }
+</script>

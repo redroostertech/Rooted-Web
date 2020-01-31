@@ -1,0 +1,36 @@
+<!-- BEGIN Error handling from form -->
+<div class="alert alert-success" role="alert" style="display: none;" id="success-alert">
+    <!-- <strong>Well done!</strong> You have successfully registered for the DadHive. You can now download the DadHive app and login. -->
+    <strong>Well done!</strong> You have successfully pre-registered for the DadHive BETA. We will be sending you an email with further instructions on setting up your iPHONE for testing!
+    <br>
+    <a href="/">Go to Dashboard</a>
+</div>
+
+<div class="alert alert-danger alert-dismissible" role="alert" style="display: none;" id="error-dup-alert">
+    <button type="button" class="close" aria-label="Close" onclick="dismissAlert();">
+        <span>×</span>
+    </button>
+    <strong>Warning!</strong> Looks like that email, LinkedIn, Instagram, and/or Facebook is already in use. Please try again.
+</div>
+
+<div class="alert alert-danger alert-dismissible" role="alert" style="display: none;" id="error-alert">
+    <button type="button" class="close" aria-label="Close" onclick="dismissAlert();">
+        <span>×</span>
+    </button>
+    <strong>Warning!</strong> Please ensure that every field was completed.
+</div>
+
+<div class="alert alert-danger alert-dismissible" role="alert" style="display: none;" id="error-email-alert">
+    <button type="button" class="close" aria-label="Close" onclick="dismissAlert();">
+        <span>×</span>
+    </button>
+    <strong>Warning!</strong> Looks like you've entered an invalid email address. Please try again.
+</div>
+
+<div class="alert alert-danger alert-dismissible" role="alert" style="display: none;" id="error-generic-alert">
+    <button type="button" class="close" aria-label="Close" onclick="dismissAlert();">
+        <span>×</span>
+    </button>
+    <strong>Warning!</strong> <p id="error-text">Something went wrong. Please try again later.</p>
+</div>
+<!-- END Error handling from form-->
