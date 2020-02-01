@@ -63,6 +63,22 @@ router.post('/testWithoutToken', function(req, res) {
     });
 });
 
+router.get('/analytics', function(req, res) {
+    res.json({
+        "message" : "Test POST request.",
+        "data" : {
+            "property": "test"
+        },
+        "page" : {
+            "title": configs.siteTitle,
+            "session": {
+                "isSessionActive": !(req.session !== null || typeof req.session !== 'undefined'),
+                "data": req.session
+            }
+        }
+    });
+});
+
 // MARK: - Login functionality should be reserved for web platform
 // Web platform not available. 
 
