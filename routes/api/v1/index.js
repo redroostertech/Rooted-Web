@@ -63,7 +63,7 @@ router.post('/testWithoutToken', function(req, res) {
     });
 });
 
-router.get('/analytics', function(req, res) {
+router.get('/logEvent', function(req, res) {
     res.json({
         "message" : "Test POST request.",
         "data" : {
