@@ -1,7 +1,7 @@
 const express                           = require('express');
 const path                              = require('path');
 const router                            = express.Router();
-const configs                           = require('../../../configs');
+const configs                           = require('../../../../configs');
 const bodyParser                        = require('body-parser');
 const session                           = require('client-sessions');
 const formidable                        = require('formidable');
@@ -13,14 +13,20 @@ router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimi
 router.use(express.static(configs.basePublicPath, { maxage: configs.oneDay * 21 }));
 router.use(session(configs.appSession));
 
-//  MARK:- Set up routes.
-var analyticsApiController = require(path.join(configs.baseRoutes, '/api/v1/analytics/api_analytics.js'));
-
-//  MARK:- Use Routes
-router.use('/api/v1/analytics', analyticsApiController);
-
-router.get('/open_app', function(req, res){ 
-
-});
+router.post('/pablo', function(req, res) { 
+    console.log(req.body);
+    switch (req.body.action) {
+        default:
+            res.status(200).json({
+                "status": 200,
+                "success": { 
+                    "result" : true, 
+                    "message" : "Anaytics saved" 
+                },
+                "data": null,
+                "error": null
+            });
+    }
+}); 
 
 module.exports = router;
