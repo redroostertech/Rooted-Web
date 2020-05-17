@@ -17,7 +17,7 @@ router.use(session(configs.appSession));
 var analyticsApiController = require(path.join(configs.baseRoutes, '/api/v1/analytics/api_analytics.js'));
 
 //  MARK:- Use Routes
-router.use('/api/v1/analytics', analyticsApiController);
+router.use('/analytics', analyticsApiController);
 
 router.get('/open_app', function(req, res){ 
 

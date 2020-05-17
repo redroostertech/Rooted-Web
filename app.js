@@ -41,10 +41,6 @@ app.use('/', viewsController);
 app.use('/api/v1', apiController);
 
 //  MARK:- Create catch all's
-app.all('/*', function(req, res){
-    show404Page(res);
-});
-
 app.all('/assets/*', function(req, res) {
     res.sendStatus(404);
 });
