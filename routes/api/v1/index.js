@@ -19,8 +19,4 @@ var analyticsApiController = require(path.join(configs.baseRoutes, '/api/v1/anal
 //  MARK:- Use Routes
 router.use('/analytics', analyticsApiController);
 
-router.get('/open_app', function(req, res){ 
-
-});
-
 module.exports = router;

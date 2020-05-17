@@ -1,11 +1,11 @@
 const express       = require('express');
-const main          = require('../../app');
+const main          = require('../../../app');
 const _             = require('underscore');
 const randomstring  = require('randomstring');
 const async         = require("async");
 const geohash       = require('latlon-geohash');
 const jwt           = require('jsonwebtoken');
-const configs       = require('../../configs');
+const configs       = require('../../../configs');
 
 var genericError = { "errorCode": 200, "errorMessage": "Something went wrong." };
 var genericEmptyError = { "errorCode" : null, "errorMessage" : null };

@@ -21,7 +21,7 @@ router.post('/pablo', function(req, res) {
                 "status": 200,
                 "success": { 
                     "result" : true, 
-                    "message" : "Anaytics saved" 
+                    "message" : "Sorry, but you're not allowed to be here. GO AWAY!" 
                 },
                 "data": null,
                 "error": null
