@@ -18,7 +18,7 @@ router.get('/', function(req, res) {
     let sessionCheckValue = !(_.isEmpty(session)) && (session !== null || typeof session !== 'undefined')
   
     if (sessionCheckValue) {
-        res.status('200').render('#', {
+        res.status('200').render('public/index.ejs', {
             "message" : "Test POST request.",
             "page" : {
                 "title": configs.siteTitle,
@@ -29,7 +29,7 @@ router.get('/', function(req, res) {
             }
         });
     } else {
-        res.status('200').render('#', {
+        res.status('200').render('public/index.ejs', {
             "message" : "Test POST request.",
             "page" : {
                 "title": configs.siteTitle,
