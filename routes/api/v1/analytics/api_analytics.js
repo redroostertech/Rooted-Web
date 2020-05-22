@@ -15,18 +15,15 @@ router.use(session(configs.appSession));
 
 router.post('/pablo', function(req, res) { 
     console.log(req.body);
-    switch (req.body.action) {
-        default:
-            res.status(200).json({
-                "status": 200,
-                "success": { 
-                    "result" : true, 
-                    "message" : "Sorry, but you're not allowed to be here. GO AWAY!" 
-                },
-                "data": null,
-                "error": null
-            });
-    }
+    res.status(200).json({
+        "status": 200,
+        "success": { 
+            "result" : true, 
+            "message" : "Sorry, but you're not allowed to be here. GO AWAY!" 
+        },
+        "data": null,
+        "error": null
+    });
 }); 
 
 module.exports = router;

@@ -552,7 +552,1471 @@ module.exports = {
         });
     },
 
-    createUserMongoDB: function(req, res) {
+
+    signout: function(req, res, callback) {
+        main.firebase.firebase_auth(function(auth) {
+            auth.signOut().then(function() {
+                let user = auth.currentUser;
+                if (user) {
+                    console.log("User did not log out yet.")
+                } else {
+                    console.log("User logged out.");
+                    req.Rootedap93w8htrse4oe89gh9ows4t.reset();
+                    req.Rootedap93w8htrse4oe89gh9ows4t.setDuration(0);
+                    callback(true);
+                }
+            }).catch(function(error) {
+                console.log("Signout error:");
+                console.log(error);
+                callback(false);
+            });
+        });
+    },
+
+    getUsers: function(req, res) {
+        retrieveAll(kUsers, function(success, error, data) {
+            var results = new Array();
+            data.forEach(function(doc) {
+                results.push(generateUserModel(doc.data()));
+            });
+            handleJSONResponse(200, error, success, { "users": results }, res);
+        });
+    },
+
+    getUserWithId: function(req, res) {
+        checkForUser(id, function(success, error, result) {
+            if (result !== null) {
+                var userData = generateUserModel(result);
+                console.log("getUserWithId result is not null ", userData);
+                var data = { "user": userData };
+                handleJSONResponse(200, error, success, data, res);;
+            } else {
+                handleJSONResponse(200, error, success, null, res);
+            }
+        });     
+    },
+
+    getGroupMessages: function(req, res) {
+        main.firebase.firebase_firestore_db(function(reference) {
+            if (!reference) { 
+                callback(genericFailure, genericError, null);
+            } else {
+                var ref = reference.collection(kUsers);        
+                var query = ref.where('uid','==', uid);
+                query.get().then(function(querySnapshot) {
+                    var data = querySnapshot.docs.map(function(doc) {
+                        var d = doc.data();
+                        d.key = doc.id;
+                        return d;
+                    });
+                    if (Object.keys(data).length > 0) {
+                        callback(genericSuccess, null, data[0]);
+                    } else {
+                        callback(genericFailure, genericError, null);
+                    }
+                }, function(err) {
+                    if (err) {
+                        console.log(err);
+                        callback(genericFailure, err, null);
+                    }
+                });
+            }
+        });
+    },
+
+    createUser: function(req, res) {
+        var object = createEmptyUserObject(req.body.email, req.body.name, req.body.uid, req.body.type, req.body.kidsCount, req.body.maritalStatus, req.body.linkedin, req.body.facebook, req.body.instagram, req.body.ageRanges, req.body.kidsNames);
+        addFor(kUsers, object, function (success, error, document) {
+            updateFor(kUsers, document.id, { "key": document.id }, function (success, error, data) {
+                var data = { "userId": document.id }
+                handleJSONResponse(200, error, success, data, res);
+            })
+        });
+    },
+
+    createMatch: function(req, res) {
+        async.parallel({
+            addMatch: function(callback) {
+                main.mongodb.actioncol(function(collection) {
+                    collection.updateOne(
+                        {
+                            "_id": req.body.senderId
+                        },{
+                            $set: {
+                                _id: req.body.senderId,
+                                createdAt: new Date(),
+                                blocked: []
+                            }, 
+                            $addToSet: { matches: req.body.recipientId }
+                        },{
+                            multi: true,
+                            upsert: true
+                        }
+                    , function(err, result) {
+                        callback(err, result);
+                    });
+                });
+                
+            },
+            checkForMatch: function(callback) {
+                var query = {}
+                var find = {
+                    _id: {
+                        $eq: req.body.recipientId
+                    }, 
+                    matches: {
+                        $in: [req.body.senderId]
+                    },
+                    blocked: {
+                        $nin: [req.body.senderId]
+                    }
+                }
+                main.mongodb.actioncol(function(collection) {
+                    collection.find(
+                        find,
+                        query
+                    ).toArray(function(err, docs) {
+                        var data = {};
+                        var finalData = new Array;
+                        async.each(docs, function(doc, completion) {
+                            checkForUser(doc._id, function(success, error, result) {
+                                if (result !== null) {
+                                    result.docId = doc._id
+                                    finalData.push(generateUserModel(result));
+                                    return completion();
+                                } else {
+                                    return completion();
+                                }
+                            });
+                        }, function(err) {
+                            if (err) {
+                                callback(err, null);
+                            } else {
+                                if (finalData.length > 0 || finalData !== null) {
+                                    data.users = finalData.filter(x => x);
+                                    callback(err, data);
+                                } else {
+                                    data.users = [];
+                                    callback(err, data);
+                                }
+                            }
+                        });
+                    });
+                });
+            },
+        }, function(err, results) {
+            if (err) return handleJSONResponse(200, err, genericFailure, results, res);
+            var data = results.checkForMatch;
+            handleJSONResponse(200, err, genericSuccess, data, res);
+        });
+    },
+
+    findMatch: function(req, res) {
+        checkForMatch(req.body.recipientId, req.body.senderId, function(success, error, results) {
+            var data = { "match": results[0] };
+            handleJSONResponse(200, error, success, data, res);
+        });
+    },
+
+    createConversation: function(req, res) {
+        var object = createConversationObject(req.body.senderId, req.body.recipientId);
+        addFor(kConversations, object, function (success, error, data) {
+            handleJSONResponse(200, error, success, data, res);
+        });
+    },
+
+    findConversations: function(req, res) {
+        //  Check if I already have a conversation started
+        checkForConversation(req.body.senderId, function(success, error, conversations) {
+
+            if (error) return handleJSONResponse(200, error, success, conversations, res);
+
+            var conversationArray = new Array();
+            if (conversations.length > 0) {
+                async.each(conversations, function(result, callback) {
+                    var doc = result;
+                    var trueRecipientId = doc.senderId === req.body.senderId ? doc.recipientId : doc.senderId;
+                    async.parallel({
+                        recipient: function(callback) {
+                            checkForUser(doc.recipientId, function(success, error, result) {
+                                if (result !== null) {
+                                    var userData = generateUserModel(result);
+                                    callback(null, userData);
+                                } else {
+                                    callback(null, null);
+                                }
+                            });
+                        },
+                        sender: function(callback) {
+                            checkForUser(doc.senderId, function(success, error, result) {
+                                if (result !== null) {
+                                    var userData = generateUserModel(result);
+                                    callback(null, userData);
+                                } else {
+                                    callback(null, null);
+                                }
+                            });
+                        },
+                        lastMessage: function(callback) {
+                            if (typeof doc.lastMessageId === "undefined") {
+                                console.log("Last message does not exist");
+                                callback(null, generateEmptyMessageModel());
+                            } else {
+                                retrieve("messages", doc.lastMessageId, function(success, error, data) {
+                                    var message;
+                                    if (data) { 
+                                        message = data;
+                                        message.id = doc.lastMessageId;
+                                    }
+                                    var object = generateMessageModel(message, message);
+                                    callback(null, object);
+                                });
+                            }
+                        },
+                        trueRecipient: function(callback) {
+                            checkForUser(trueRecipientId, function(success, error, result) {
+                                if (result !== null) {
+                                    var userData = generateUserModel(result);
+                                    callback(null, userData);
+                                } else {
+                                    callback(null, null);
+                                }
+                            });
+                        }
+                    }, function(err, results) {
+                        doc.sender = results.sender;
+                        doc.recipient = results.recipient;
+                        doc.trueRecipient = results.trueRecipient;
+                        doc.lastMessage = results.lastMessage;
+                        conversationArray.push(doc);
+                        callback();
+                    });
+                }, function(err) {
+                    if (err) {
+                        handleJSONResponse(200, genericError, genericFailure, null, res);
+                    } else {
+                        var data = { "conversations": conversationArray };
+                        handleJSONResponse(200, error, success, data, res);
+                    }
+                });
+            } else {
+                handleJSONResponse(200, error, success, null, res);
+            }
+        });
+    },
+
+    findConversation: function(id, res) {
+        //  Check if I already have a conversation started
+        retrieveFor(kConversations, id, function(success, error, document) {
+            var convo = generateConversationModel(document, document.data());
+            //  Get Recipient & Sender User Object
+            async.parallel({
+                recipient: function(callback) {
+                    retrieveFor(kUsers, convo.recipientId, function(success, error, document) {
+                        var object = generateUserModel(document, document.data());
+                        callback(null, object);
+                    });
+                },
+                sender: function(callback) {
+                    retrieveFor(kUsers, convo.senderId, function(success, error, document) {
+                        var object = generateUserModel(document, document.data());
+                        callback(null, object);
+                    });
+                },
+                lastMessage: function(callback) {
+                    console.log(convo);
+                    if (typeof convo.lastMessageId === 'undefined') {
+                        console.log("Last message does not exist");
+                        callback(null, null);
+                    } else {
+                        retrieveFor(kMessages, convo.lastMessageId, function(success, error, document) {
+                            var object = generateMessageModel(document, document.data());
+                            callback(null, object);
+                        });
+                    }
+                }
+            }, function(err, results) {
+                convo.sender = results.sender;
+                convo.recipient = results.recipient;
+                if (typeof convo.lastMessageId !== 'undefined') {
+                    if (results.lastMessage.senderId === convo.senderId) {
+                        results.lastMessage.sender = results.sender;
+                    }
+                    if (results.lastMessage.senderId === convo.recipientId) {
+                        results.lastMessage.sender = results.recipient;
+                    }
+                    convo.lastMessage = results.lastMessage
+                }
+                var data = { "conversation": convo };
+                handleJSONResponse(200, error, success, data, res);
+            });
+        });
+    },
+
+    updateConversation: function(req, res) {
+        updateFor(kConversations, req.body.conversationKey, { "lastMessageId" : req.body.messageId, "updatedAt" : new Date() }, function (success, error, data) {
+            handleJSONResponse(200, error, success, data, res);
+        });
+    },
+
+    uploadPicture: function(req, res) {
+        updateFor(kUsers, req.userId, { 
+            "userProfilePicture_1_url": req.userProfilePicture_1_url,
+            "userProfilePicture_1_meta": req.userProfilePicture_1_meta,
+            "userProfilePicture_2_url": req.userProfilePicture_2_url,
+            "userProfilePicture_2_meta": req.userProfilePicture_2_meta,
+            "userProfilePicture_3_url": req.userProfilePicture_3_url,
+            "userProfilePicture_3_meta": req.userProfilePicture_3_meta,
+        }, function (success, error, data) {
+            handleJSONResponse(200, error, success, data, res);
+        });
+    },
+
+    createMapItem: function(req, res, callback) {
+        addFor(kMapItems, req.body, function (success, error, document) {
+            if (error) return handleJSONResponse(200, error, success, data, res);
+            var data = { "itemId": document.id }
+            callback(data);
+        });
+    },
+
+    addToMap: function(req, res) {
+        var userGeohash = geohash.encode(req.body.latitude, req.body.longitude, 10);
+        main.mongodb.mapitemcol(function(collection) {
+            console.log("Adding to map");
+            collection.insertOne( 
+                {
+                    itemId: req.body.itemId,
+                    userId: req.body.userId,
+                    type: req.body.type,
+                    startDate: req.body.startDate,
+                    name: req.body.name,
+                    address: req.body.address,
+                    h: userGeohash,
+                    location: {
+                        type: "Point", 
+                        coordinates: [ parseFloat(req.body.longitude), parseFloat(req.body.latitude) ]
+                    }
+                }, function(err) {
+                    console.log(err);
+                    if (err) return handleJSONResponse(200, err, genericFailure, null, res);
+                    res.status(200).json({
+                        "status": 200,
+                        "success": { "result" : true, "message" : "Request was successful" },
+                        "data": req.body,
+                        "error": null
+                    });
+                }
+            )
+        });
+    },
+
+    retrieveForMap: function(req, res) {
+        var pageNo = parseInt(req.body.pageNo)
+        var size = 1000
+        var perPage = parseInt(req.body.perPage)
+        var query = {}
+        var find = {
+            userId: {
+                $nin: [req.body.userId]
+            }, 
+            location: { 
+                $near: {
+                    $geometry: { 
+                        type: "Point",  
+                        coordinates: [ parseFloat(req.body.longitude),parseFloat(req.body.latitude) ] },
+                    $maxDistance: getMeters(parseFloat(req.body.maxDistance))
+                }
+            }
+        }
+        if (pageNo < 0 || pageNo === 0) {
+            return handleJSONResponse(200, invalidPageFailure, genericFailure, null, res);
+        }
+        query.skip = size * (pageNo - 1)
+        query.limit = size
+
+        console.log(find);
+        
+        main.mongodb.mapitemcol(function(collection) {
+            collection.find(
+                find,
+                query
+            ).toArray(function(error, docs) {
+                if (docs !== null) {
+                    console.log(docs);
+                    var resultsCount = docs.length;
+                    var totalPages = Math.ceil(resultsCount / size);
+                    var data = {
+                        "currentPage": pageNo,
+                        "nextPage": totalPages > pageNo ? pageNo + 1: totalPages,
+                        "totalPages": totalPages,
+                        "resultsCount": 0,
+                        "resultsPerPage": perPage,
+                    }
+                    data.users = new Array;
+                    var success;
+
+                    if (resultsCount > 0) {
+                        success = genericSuccess;
+                        var finalData = new Array;
+
+                        async.each(docs, function(doc, completion) {
+                            checkForUser(doc.userId, function(success, error, result) {
+                                if (result !== null) {
+
+                                    //console.log("Result is not null");
+                                    var obj = result;
+                                    obj.docId = doc._id;
+
+                                    if (obj.ageRangeId <= parseFloat(req.body.ageRangeId)) {
+                                        var emptyImages = [obj.userProfilePicture_1_url, obj.userProfilePicture_2_url, obj.userProfilePicture_3_url, obj.userProfilePicture_4_url, obj.userProfilePicture_5_url, obj.userProfilePicture_6_url]
+                                        if (emptyImages.filter(x => x).length > 0) {
+                                            //console.log(obj);
+                                            finalData.push(generateUserModel(obj));
+                                            data.resultsCount += 1;
+                                            return completion();
+                                        } else {
+                                            //console.log("Does not include images");
+                                            return completion();
+                                        }
+                                    } else {
+                                        //console.log("Does not include age range ID");
+                                        finalData.push(generateUserModel(obj));
+                                        data.resultsCount += 1;
+                                        return completion();
+                                    }
+                                } else {
+                                    return completion();
+                                }
+                            });
+                        }, function(err) {
+                            //console.log("Final data: ", finalData);
+                            if (err) {
+                                console.log(err);
+                                return handleJSONResponse(200, err, success, data, res);
+                            } else {
+                                if (finalData.length > 0 || finalData !== null) {
+                                    //data.resultsCount += 1;
+                                    data.users = finalData.filter(x => x);
+                                    return handleJSONResponse(200, null, success, data, res);
+                                } else {
+                                    return handleJSONResponse(200, genericError, genericFailure, data, res);
+                                }
+                            }
+
+                        });
+                    } else {
+                        success = genericFailure;
+                        return handleJSONResponse(200, error, success, data, res);
+                    }
+                } else {
+                    return handleJSONResponse(200, error, success, data, res);
+                }
+            });
+        });
+    },
+
+    saveLocation: function(req, res) {
+        // main.firebase.generate_geopoint(parseFloat(req.body.latitude), parseFloat(req.body.longitude), function(geopoint) {
+        //     var data = geopoint;
+        //     data["addressLat"] = parseFloat(req.body.latitude);
+        //     data["addressLong"] = parseFloat(req.body.longitude);
+        //     data["addressState"] = req.body.addressState || "";
+        //     data["addressCity"] = req.body.addressCity || "";
+        //     data["addressCountry"] = req.body.addressCountry || ""; 
+        //     data["addressZipCode"] = req.body.addressZipCode || "";
+        //     updateFor(kUsers, req.body.userId, data, function (success, error, data) {
+        //         handleJSONResponse(200, error, success, data, res);
+        //     });
+        // });       
+    },
+
+    deleteUser: function(req, res) {
+        deleteFor(kUsers, req.body.userId, function (success, error, data) {
+            handleJSONResponse(200, error, success, data, res);
+        });
+    },
+
+    getNearByUsers: function(req, res) {
+        main.firebase.firebase_geo(function(geo) {
+            main.firebase.generate_geopoint(Number(req.body.latitude), Number(req.body.longitude), function(center) {
+
+                // Proof of concept
+                const geocollection = geo.collection(kUsers);
+                console.log(center);
+                var queryOne = geocollection.near({ center: center, radius: 1000 });
+                queryOne.orderedBy('uid');
+                queryOne.limit(10);
+
+                // Get query (as Promise)
+                queryOne.get().then(function(querySnapshot) {
+                    var data = querySnapshot.docs.map(function(doc) {
+                        var d = doc.data();
+                        d.key = doc.id;
+                        return d;
+                    });
+                    if (Object.keys(data).length > 0) {
+                        var return_data = { "user": data[0] };
+                        handleJSONResponse(200, null, genericSuccess, return_data, res);
+                    } else {
+                        handleJSONResponse(200, genericFailure, genericError, null, res);
+                    }
+                }, function(err) {
+                    if (err) {
+                        console.log(err);
+                        callback(genericFailure, err, null);
+                        handleJSONResponse(200, genericFailure, err, null, res);
+                    }
+                });
+            });
+        });
+    }
+}
+
+function checkForUser (uid, callback) {
+    main.firebase.firebase_firestore_db(function(reference) {
+        if (!reference) { 
+            callback(genericFailure, genericError, null);
+        } else {
+            var ref = reference.collection(kUsers);        
+            var query = ref.where('uid','==', uid);
+            query.get().then(function(querySnapshot) {
+                var data = querySnapshot.docs.map(function(doc) {
+                    var d = doc.data();
+                    d.key = doc.id;
+                    return d;
+                });
+                if (Object.keys(data).length > 0) {
+                    callback(genericSuccess, null, data[0]);
+                } else {
+                    callback(genericFailure, genericError, null);
+                }
+            }, function(err) {
+                if (err) {
+                    console.log(err);
+                    callback(genericFailure, err, null);
+                }
+            });
+        }
+    });
+}
+
+function checkForMapItem (uid, callback) {
+    main.firebase.firebase_firestore_db(function(reference) {
+        if (!reference) { 
+            callback(genericFailure, genericError, null);
+        } else {
+            var ref = reference.collection(kMapItems);        
+            var query = ref.where('uid','==', uid);
+            query.get().then(function(querySnapshot) {
+                var data = querySnapshot.docs.map(function(doc) {
+                    var d = doc.data();
+                    d.key = doc.id;
+                    return d;
+                });
+                if (Object.keys(data).length > 0) {
+                    callback(genericSuccess, null, data[0]);
+                } else {
+                    callback(genericFailure, genericError, null);
+                }
+            }, function(err) {
+                if (err) {
+                    console.log(err);
+                    callback(genericFailure, err, null);
+                }
+            });
+        }
+    });
+}
+
+function checkForMatch (recipientId, senderId, callback) {
+    var parameters = [
+        {
+            key: "recipientId",
+            condition: "==", 
+            value: senderId
+        },{
+            key: "senderId",
+            condition: "==", 
+            value: recipientId
+        }
+    ]
+    retrieveWithParameters(kMatches, parameters, function(success, error, snapshots) {
+        callback(success, error, snapshots);
+    });
+}
+
+function checkForConversation (senderId, callback) {
+    main.firebase.firebase_firestore_db(function(reference) {
+        if (!reference) { 
+            callback(genericFailure, genericError, null);
+        } else {
+            var conversationArray = new Array();
+            async.parallel({
+                findRecipientConversations: function(callback) {
+                    var ref = reference.collection(kConversations);        
+                    var query = ref.where('recipientId','==', senderId);
+                    query.get().then(function(querySnapshot) {
+                        var data = querySnapshot.docs.map(function(doc) {
+                            var d = doc.data();
+                            d.key = doc.id;
+                            return d;
+                        });
+                        if (Object.keys(data).length > 0) {
+                            callback(null, data);
+                        } else {
+                            callback(null, null);
+                        }
+                    });
+                },
+                findSenderConversations: function(callback) {
+                    var ref = reference.collection(kConversations);        
+                    var query = ref.where('senderId','==', senderId);
+                    query.get().then(function(querySnapshot) {
+                        var data = querySnapshot.docs.map(function(doc) {
+                            var d = doc.data();
+                            d.key = doc.id;
+                            return d;
+                        });
+                        if (Object.keys(data).length > 0) {
+                            callback(null, data);
+                        } else {
+                            callback(null, null);
+                        }
+                    });
+                }
+            }, function(err, results) {
+                var conversationArray = new Array();
+
+                if (results.findSenderConversations) {
+                    results.findSenderConversations.forEach(function(conversation) {
+                        conversationArray.push(conversation);
+                    });
+                }
+
+                if (results.findRecipientConversations) {
+                    results.findRecipientConversations.forEach(function(conversation) {
+                        conversationArray.push(conversation);
+                    });
+                }
+
+                if (conversationArray.length > 0 ) {
+                    console.log(conversationArray);
+                    callback(genericSuccess, null, conversationArray);
+                } else {
+                    callback(genericSuccess, genericError, null);
+                }
+            });
+        }
+    });
+}
+
+function checkForMessages (conversationId, callback) {
+    var parameters = [
+        {
+            key: "conversationId",
+            condition: "==", 
+            value: conversationId
+        }
+    ]
+    retrieveWithParameters(kMessages, parameters, function(success, error, results) {
+        callback(success, error, results);
+    });
+}
+
+//  MARK:- MODEL FACTORIES
+function createEmptyUserObject(email, name, uid, type, kidsCount, maritalStatus, linkedin, facebook, instagram, ageRanges, kidsNames, refreshToken) {
+    var data = {
+        id: randomstring.generate(25),
+        refreshToken: refreshToken,
+        email: email,
+        name: name,
+        uid: uid,
+        deviceId: null,
+        createdAt: new Date(),
+        lastLogin: new Date(),
+        type: type,
+        maritalStatus: maritalStatus,
+        preferredCurrency: 'USD',
+        notifications : false,
+        maxDistance : 25.0,
+        ageRangeId: ageRanges,
+        ageRangeMin: 0,
+        ageRangeMax: 0,
+        initialSetup : false,
+        userProfilePicture_1_url: null,
+        userProfilePicture_1_meta: null,
+        userProfilePicture_2_url: null,
+        userProfilePicture_2_meta: null,
+        userProfilePicture_3_url: null,
+        userProfilePicture_3_meta: null,
+        userProfilePicture_4_url: null,
+        userProfilePicture_4_meta: null,
+        userProfilePicture_5_url: null,
+        userProfilePicture_5_meta: null,
+        userProfilePicture_6_url: null,
+        userProfilePicture_6_meta: null,
+        dob: null,
+        addressLine1 : null,
+        addressLine2 : null,
+        addressLine3 : null,
+        addressLine4 : null,
+        addressCity : null,
+        addressState : null,
+        addressZipCode : null,
+        addressLong : null,
+        addressLat : null,
+        addressCountry: null,
+        addressDescription: null,
+        bio: null,
+        jobTitle: null,
+        companyName: null,
+        schoolName: null,
+        kidsCount: 0,
+        kidsNames: kidsNames,
+        kidsAges: null,
+        kidsBio: null,
+        kidsCount: kidsCount,
+        questionOneTitle: null,
+        questionOneResponse: null,
+        questionTwoTitle: null,
+        questionTwoResponse: null,
+        questionThreeTitle: null,
+        questionThreeResponse: null,
+        canSwipe: true,
+        nextSwipeDate: null,
+        profileCreation : false,
+        socialInstagram: instagram,
+        socialFacebook: facebook,
+        socialLinkedIn: linkedin
+    }
+    if (ageRanges == 0) {
+        data.ageRangeMin = 2;
+        data.ageRangeMax = 4;
+    }
+
+    if (ageRanges == 1) {
+        data.ageRangeMin = 4;
+        data.ageRangeMax = 7;
+    }
+
+    if (ageRanges == 2) {
+        data.ageRangeMin = 7;
+        data.ageRangeMax = 10;
+    }
+
+    if (ageRanges == 3) {
+        data.ageRangeMin = 10;
+        data.ageRangeMax = 13;
+    }
+    return data
+}
+
+function createMessageObject(conversationId, message, senderId) {
+    var data = {
+        id: randomstring.generate(25),
+        conversationId: conversationId,
+        message: message,
+        createdAt: new Date(),
+        senderId: senderId,
+        attachment: null
+    }
+    return data
+}
+
+function createConversationObject(senderId, recipientId) {
+    var data = {
+        id: randomstring.generate(25),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        owner: senderId,
+        participants: [senderId, recipientId],
+        lastMessageId: null,
+        lastMessageText: null,
+    }
+    return data
+}
+
+function createEmptyActionObject(uid) {
+    var data = {
+        id: randomstring.generate(25),
+        owner: uid,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        likes: [],
+        matches: [],
+        blocked: [],
+        conversations: [],
+    }
+    return data
+}
+
+function createCategoryObject(label) {
+    var data = {
+        id: randomstring.generate(25),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        label: label
+    }
+    return data
+}
+
+function createPostObject(senderId, type, categories, description, media) {
+    var data = {
+        id: randomstring.generate(25),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        owner: senderId,
+        type: type,
+        categories: categories,
+        description: description,
+        media: media,
+    }
+    return data
+}
+
+function createEngagementObject(senderId, type, comment, post) {
+    var data = {
+        id: randomstring.generate(25),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        owner: senderId,
+        type: type,
+        post: post,
+        comment: comment,
+    }
+    return data
+}
+
+function createNotificationObject(senderId, ownerId, type, comment, post) {
+    var data = {
+        id: randomstring.generate(25),
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        senderId: senderId,
+        owner: ownerId,
+        post: post,
+        type: type,
+        comment: comment,
+    }
+    return data
+}
+
+function sendNotification(notificationObject, res) {
+    main.mongodb.usergeo(function(collection) {
+        collection.findOne(
+        {
+            uid: notificationObject.owner
+        }, function(err, result) {
+            if (err) {
+                if (!res) return console.log("No user available");
+                res.status(200).json({
+                    "status": 200,
+                    "success": { 
+                        "result" : true, 
+                        "message" : "Notification was not sent" 
+                    },
+                    "data": null,
+                    "error": err
+                });
+            } 
+          
+            if (!result) {
+                if (!res) return console.log("No user available");
+                res.status(200).json({
+                    "status": 200,
+                    "success": { 
+                        "result" : true, 
+                        "message" : "Notification was not sent" 
+                    },
+                    "data": null,
+                    "error": err
+                });
+            }
+
+            const user = generateUserModel(result);
+            var payload = {
+                notification: {
+                    badge: '1',
+                    title: 'Message from DadHive',
+                    body: 'Someone interacted with your activity! Check it out now!',
+                }
+                
+            }
+
+            var options = {
+                priority: 'high',
+                timeToLive: 60 * 60 * 24, // 1 day
+            }
+
+            main.firebase.firebase_admin(function(fcm) {
+                fcm.messaging().sendToDevice(user.settings.deviceId, payload, options).then(function(response) {
+                    // See the MessagingDevicesResponse reference documentation for
+                    // the contents of response.
+                    console.log('Successfully sent message:', response);
+                    if (!res) return console.log("Successfully sent with response: ", response);
+                    res.status(200).json({
+                        "status": 200,
+                        "success": { 
+                            "result" : true, 
+                            "message" : "Notification was sent" 
+                        },
+                        "data": {
+                            "notification": response
+                        },
+                        "error": err
+                    });
+                }).catch(function(error) {
+                    console.log('Error sending message:', error);
+                    if (err) {
+                        if (!res) return console.log("Something went wrong trying to send message: ", response);
+                        res.status(200).json({
+                            "status": 200,
+                            "success": { 
+                                "result" : false, 
+                                "message" : "Notification was not sent" 
+                            },
+                            "data": {
+                                "notification": response
+                            },
+                            "error": error
+                        });
+                    }        
+                });
+            })
+        });
+    });    
+}
+
+//  MARK:- Model Generators
+function generateUserModel(doc) {
+    var data = { 
+        key: doc.key,
+        accessToken: doc.token,
+        refreshToken: doc.refreshToken,
+        uid: doc.uid,
+        docId: doc.docId,
+        name: {
+            name: doc.name
+        },
+        createdAt: doc.createdAt,
+        email: doc.email,
+        type: doc.type,
+        dob: doc.dob,
+        currentPage: doc.currentPage,
+        settings: {
+            deviceId: doc.deviceId,
+            preferredCurrency: doc.preferredCurrency,
+            notifications : doc.notifications,
+            location: {
+                addressLat: doc.addressLat,
+                addressLong: doc.addressLong,
+                addressCity: doc.addressCity,
+                addressState: doc.addressState,
+                addressDescription: doc.addressDescription,
+                addressCountry: doc.addressCountry,
+                addressLine1 : doc.addressLine1,
+                addressLine2 : doc.addressLine2,
+                addressLine3 : doc.addressLine3,
+                addressLine4 : doc.addressLine4,
+            },
+            maxDistance: doc.maxDistance,
+            ageRange: {
+                id: doc.ageRangeId,
+                min: doc.ageRangeMin,
+                max: doc.ageRangeMax
+            },
+            initialSetup: doc.initialSetup,
+        },
+        mediaArray: [
+            {
+                url: doc.userProfilePicture_1_url,
+                meta: doc.userProfilePicture_1_meta,
+                order: 1
+            }, {
+                url: doc.userProfilePicture_2_url,
+                meta: doc.userProfilePicture_2_meta,
+                order: 2
+            }, {
+                url: doc.userProfilePicture_3_url,
+                meta: doc.userProfilePicture_3_meta,
+                order: 3
+            }, {
+                url: doc.userProfilePicture_4_url,
+                meta: doc.userProfilePicture_4_meta,
+                order: 4
+            }, {
+                url: doc.userProfilePicture_5_url,
+                meta: doc.userProfilePicture_5_url,
+                order: 5
+            }, {
+                url: doc.userProfilePicture_6_url,
+                meta: doc.userProfilePicture_6_meta,
+                order: 6
+            }
+        ],
+        userInformationSection1: [
+            {
+                type: "location",
+                title: "Location",
+                info: doc.addressCity + ", " + doc.addressState,
+                image: "location"
+            }, {
+                type: "bio",
+                title: "About Me",
+                info: doc.bio,
+                image: "bio"
+            }, {
+                type: "companyName",
+                title: "Work",
+                info: doc.companyName,
+                image: "company"
+            }, {
+                type: "jobTitle",
+                title: "Job Title",
+                info: doc.jobTitle,
+                image: "job"
+            }, {
+                type: "schoolName",
+                title: "School / University",
+                info: doc.schoolName,
+                image: "school"
+            }
+        ],
+        userInformationSection2: [
+            {
+                type: "kidsNames",
+                title: "Name(s) of my kid(s)",
+                info: doc.kidsNames
+            }, {
+                type: "kidsAges",
+                title: "My kid(s) age range",
+                info: doc.kidsAges
+            }, {
+                type: "kidsBio",
+                title: "About my kid(s)",
+                info: doc.kidsBio
+            }, {
+                type: "kidsCount",
+                title: "Number of kids",
+                info: doc.kidsCount
+            }
+        ],
+        userInformationSection3: [
+            {
+                type: "questionOne",
+                title: doc.questionOneTitle,
+                info: doc.questionOneResponse,
+                image: "question"
+            }, {
+                type: "questionTwo",
+                title: doc.questionTwoTitle,
+                info: doc.questionTwoResponse,
+                image: "question"
+            }, {
+                type: "questionThree",
+                title: doc.questionThreeTitle,
+                info: doc.questionThreeResponse,
+                image: "question"
+            }
+        ],
+        userPreferencesSection: [
+            {
+                type: "ageRange",
+                title: "Age Range",
+                info: {
+                    ageRangeId: doc.ageRangeId,
+                    ageRangeMin: doc.ageRangeMin,
+                    ageRangeMax: doc.ageRangeMax
+                }
+            }, {
+                type: "maxDistance",
+                title: "Maximum Distance",
+                info: doc.maxDistance
+            }
+        ],
+        canSwipe: doc.canSwipe,
+        nextSwipeDate: doc.nextSwipeDate,
+        profileCreation : doc.profileCreation,
+        lastId: doc.lastId,
+        matches: doc.matches,
+    }
+    if (doc.actions_results && doc.actions_results.length > 0) {
+        data.actions_results = generateActionModel(doc.actions_results[0])
+    }
+    return data
+}
+
+function generateActionModel(doc) {
+    var data = {
+        _id: doc._id,
+        id: doc.id,
+        owner: doc.owner,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        likes: doc.likes,
+        matches: doc.matches,
+        blocked: doc.blocked,
+        conversations: doc.conversations,
+    }
+    return data
+}
+
+// MARK:- CONVERSATIONS
+function generateConversationsModel(docs) {
+    var objects = new Array();
+    docs.forEach(function(doc) {
+        objects.push(generateConversationModel(doc));
+    });
+    return categories
+}
+
+function generateConversationModel(doc) {
+    var data = { 
+        _id: doc._id,
+        id: doc.id,
+        owner: doc.senderId,
+        participants: doc.participants,
+        createdAt: doc.createdAt,
+        lastMessageId: doc.lastMessageId,
+        updatedAt: doc.updatedAt
+    }
+    return data
+}
+
+// MARK:- MESSAGES
+function generateMessagesModel(docs) {
+    var objects = new Array();
+    docs.forEach(function(doc) {
+        objects.push(generateMessageModel(doc));
+    });
+    return categories
+}
+
+function generateMessageModel(document, doc) {
+    var data = { 
+        key: document.id,
+        id: doc.id,
+        conversationId: doc.conversationId,
+        senderId: doc.senderId,
+        message: doc.message,
+        createdAt: doc.createdAt || new Date()
+    }
+    return data
+}
+
+function generateEmptyMessageModel() {
+    var data = { 
+        key: "",
+        id: "",
+        conversationId: "",
+        senderId: "",
+        message: "Say hello!",
+        createdAt: ""
+    }
+    return data
+}
+
+// MARK:- CATEGORIES
+function generateCategoryModels(docs) {
+    var categories = new Array();
+    docs.forEach(function(doc) {
+        categories.push(generateCategoryModel(doc));
+    });
+    return categories
+}
+
+function generateCategoryModel(doc) {
+    var data = {
+        _id: doc._id,
+        id: doc.id,
+        createdAt: doc.createdAt,
+        updatedAt: doc.updatedAt,
+        label: doc.label
+    }
+    return data
+}
+
+// MARK:- POSTS
+function generatePostObjects(docs) {
+    var array = new Array();
+    docs.forEach(function(doc) {
+        array.push(generatePostObject(doc));
+    });
+    return array
+}
+
+function generatePostObject(doc) {
+    console.log("Post object is")
+    console.log(doc);
+    var data = {
+        id: doc.id,
+        _id: doc._id,
+        createdAt: timeAgo(doc.createdAt),
+        updatedAt: doc.updatedAt,
+        type: doc.type,
+        description: doc.description,
+        media: doc.media,
+        numOfLikes: doc.likes,
+        numOfComments: doc.comments,
+        numOfUpvotes: doc.upvotes,
+        numOfDownvotes: doc.downvotes,
+        myLike: doc.myLike
+    }
+
+    if (typeof(doc._owner) !== "undefined") {
+        if (doc._owner.length > 0) {
+            data.owner = doc._owner.map(generateUserModel);
+        }
+    }
+    if (typeof(doc._categories) !== "undefined") {
+        if (doc._categories.length > 0) {
+            data.categories = doc._categories.map(generateCategoryModel);
+        }
+    }
+
+    if (typeof(doc._engagements) !== "undefined" ) {
+        if (doc._engagements.length > 0) {
+            data.engagements = doc._engagements.map(generateEngagementObject);
+        }
+    }
+
+    return data
+}
+
+// MARK:- ENGAGEMENTS
+function generateEngagementObjects(docs) {
+    var array = new Array();
+    docs.forEach(function(doc) {
+        array.push(generateEngagementObject(doc));
+    });
+    return array
+}
+
+function generateEngagementObject(doc) {
+    var data = {
+        id: doc.id,
+        createdAt: timeAgo(doc.createdAt),
+        updatedAt: doc.updatedAt,
+        owner: doc._owner.map(generateUserModel),
+        type: doc.type,
+        comment: doc.comment,
+        post: doc.post,
+        numOfLikes: doc.likes,
+        numOfComments: doc.comments,
+        numOfUpvotes: doc.upvotes,
+        numOfDownvotes: doc.downvotes,
+        myLike: doc.myLike
+    }
+
+    if (typeof doc.media !== 'undefined') {
+        data.media = doc.media;
+    }
+
+    return data
+}
+
+// MARK: - Activity
+function generateNotifcationObjects(docs) {
+    var array = new Array();
+    console.log(docs.length);
+    docs.forEach(function(doc) {
+        array.push(generateNotifcationObject(doc));
+    });
+    return array
+}
+
+function generateNotifcationObject(doc) {
+    var data = {
+        _id: doc._id,
+        id: doc.id,
+        createdAt: timeAgo(doc.createdAt),
+        updatedAt: doc.updatedAt,
+        type: doc.type,
+    }
+    
+
+    if (typeof(doc._senderId) !== "undefined" ) {
+        if (doc._senderId.length > 0) {
+            data.senderId = doc._senderId.map(generateUserModel);
+        }
+    }
+
+    if (typeof(doc._owner) !== "undefined" ) {
+        if (doc._owner.length > 0) {
+            data.owner = doc._owner.map(generateUserModel);
+        }
+    }
+
+    if (typeof(doc._post) !== "undefined" ) {
+        if (doc._post.length > 0) {
+            data.post = doc._post.map(generatePostObject);
+        }
+    }
+
+    if (typeof(doc.comment) !== "undefined" ) {
+        data.comment = doc.comment;
+    }
+
+    if ((typeof(data.owner) !== "undefined") && (typeof(data.post) !== "undefined" )) {
+        if (data.type === "1") {
+            data.message = (data.owner[0].name.name || "Someone") + " liked your post"
+        }
+
+        if (data.type === "2") {
+            data.message = (data.owner[0].name.name || "Someone") + " commented your post"
+        }
+
+        if (data.type === "3") {
+            data.message = (data.owner[0].name.name || "Someone") + " upvoted your post"
+        }
+    }
+    return data
+}
+
+function generateOthersNotifcationObjects(docs) {
+    var array = new Array();
+    console.log(docs.length);
+    docs.forEach(function(doc) {
+        array.push(generateOthersNotifcationObject(doc));
+    });
+    return array
+}
+
+function generateOthersNotifcationObject(doc) {
+    console.log(doc)
+    var data = {
+        _id: doc._id,
+        id: doc.id,
+        createdAt: timeAgo(doc.createdAt),
+        updatedAt: doc.updatedAt,
+        type: doc.type,
+    }
+
+    if (typeof(doc._post) !== "undefined" ) {
+        console.log("Post being parsed.")
+        data.post = [generatePostObject(doc._post)]
+    }
+
+    if (typeof(doc.comment) !== "undefined" ) {
+        data.comment = doc.comment;
+    }
+
+    if (data.type === "1") {
+        data.message = "You liked a post"
+    }
+
+    if (data.type === "2") {
+        data.message = "You commented on a post"
+    }
+
+    if (data.type === "3") {
+        data.message = "You upvoted a post"
+    }
+    return data
+}
+
+//  MARK:- UTILITIES
+function getMeters(fromMiles) {
+    return fromMiles * 1609.344;
+}
+
+function createSession(req, data) {
+    req.Rootedap93w8htrse4oe89gh9ows4t.user = data;
+    req.Rootedap93w8htrse4oe89gh9ows4t.uid = data.uid;
+    req.Rootedap93w8htrse4oe89gh9ows4t.token = data.token;
+    req.Rootedap93w8htrse4oe89gh9ows4t.refresh = data.refreshToken;
+}
+
+const MONTH_NAMES = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+  
+
+function getFormattedDate(date, prefomattedDate = false, hideYear = false) {
+    var day = date.getDate();
+    var month = MONTH_NAMES[date.getMonth()];
+    var year = date.getFullYear();
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var getCurrentAmPm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12;
+    hours = hours ? hours : 12;    
+  
+    if (minutes < 10) {
+      // Adding leading zero to minutes
+      minutes = `0${ minutes }`;
+    }
+  
+    if (prefomattedDate) {
+        // Today at 10:20
+        // Yesterday at 10:20
+        //   return `${ prefomattedDate } at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
+        return `${ prefomattedDate }`;
+    }
+  
+    if (hideYear) {
+      // 10. January at 10:20
+      return `${ day }. ${ month } at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
+    }
+  
+    // 10. January 2017. at 10:20
+    return `${ day }. ${ month } ${ year }. at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
+  }
+  
+  
+  // --- Main function
+  function formatAMPM(date) {
+    var hours = date.getHours();
+    var minutes = date.getMinutes();
+    var ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    minutes = minutes < 10 ? '0'+minutes : minutes;
+    var strTime = hours + ':' + minutes + ' ' + ampm;
+    return strTime;
+  }
+  
+  function timeAgo(dateParam) {
+    if (!dateParam) {
+      return null;
+    }
+  
+    const date = typeof dateParam === 'object' ? dateParam : new Date(dateParam);
+    const DAY_IN_MS = 86400000; // 24 * 60 * 60 * 1000
+    const today = new Date();
+    const yesterday = new Date(today - DAY_IN_MS);
+    const seconds = Math.round((today - date) / 1000);
+    const minutes = Math.round(seconds / 60);
+    const isToday = today.toDateString() === date.toDateString();
+    const isYesterday = yesterday.toDateString() === date.toDateString();
+    const isThisYear = today.getFullYear() === date.getFullYear();
+  
+  
+    if (seconds < 5) {
+      return 'now';
+    } else if (seconds < 60) {
+      return `${ seconds } seconds ago`;
+    } else if (seconds < 90) {
+      return 'about a minute ago';
+    } else if (minutes < 60) {
+      return `${ minutes } minutes ago`;
+    } else if (isToday) {
+      return getFormattedDate(date, 'Today'); // Today at 10:20
+    } else if (isYesterday) {
+      return getFormattedDate(date, 'Yesterday'); // Yesterday at 10:20
+    } else if (isThisYear) {
+      return getFormattedDate(date, false, true); // 10. January at 10:20
+    }
+  
+    return getFormattedDate(date); // 10. January 2017. at 10:20
+  }
+
+
+  /*
+
+      createUserMongoDB: function(req, res) {
 
         // MARK: - Create user
         main.mongodb.usergeo(function(collection) {
@@ -636,26 +2100,6 @@ module.exports = {
                         }); 
                     });
                 });
-            });
-        });
-    },
-
-    signout: function(req, res, callback) {
-        main.firebase.firebase_auth(function(auth) {
-            auth.signOut().then(function() {
-                let user = auth.currentUser;
-                if (user) {
-                    console.log("User did not log out yet.")
-                } else {
-                    console.log("User logged out.");
-                    req.Rootedap93w8htrse4oe89gh9ows4t.reset();
-                    req.Rootedap93w8htrse4oe89gh9ows4t.setDuration(0);
-                    callback(true);
-                }
-            }).catch(function(error) {
-                console.log("Signout error:");
-                console.log(error);
-                callback(false);
             });
         });
     },
@@ -4144,1443 +5588,4 @@ module.exports = {
 
 
     // END MONGODB FUNCTIONS
-    
-    getUsers: function(req, res) {
-        retrieveAll(kUsers, function(success, error, data) {
-            var results = new Array();
-            data.forEach(function(doc) {
-                results.push(generateUserModel(doc.data()));
-            });
-            handleJSONResponse(200, error, success, { "users": results }, res);
-        });
-    },
-
-    getUserWithId: function(req, res) {
-        checkForUser(id, function(success, error, result) {
-            if (result !== null) {
-                var userData = generateUserModel(result);
-                console.log("getUserWithId result is not null ", userData);
-                var data = { "user": userData };
-                handleJSONResponse(200, error, success, data, res);;
-            } else {
-                handleJSONResponse(200, error, success, null, res);
-            }
-        });     
-    },
-
-    getGroupMessages: function(req, res) {
-        main.firebase.firebase_firestore_db(function(reference) {
-            if (!reference) { 
-                callback(genericFailure, genericError, null);
-            } else {
-                var ref = reference.collection(kUsers);        
-                var query = ref.where('uid','==', uid);
-                query.get().then(function(querySnapshot) {
-                    var data = querySnapshot.docs.map(function(doc) {
-                        var d = doc.data();
-                        d.key = doc.id;
-                        return d;
-                    });
-                    if (Object.keys(data).length > 0) {
-                        callback(genericSuccess, null, data[0]);
-                    } else {
-                        callback(genericFailure, genericError, null);
-                    }
-                }, function(err) {
-                    if (err) {
-                        console.log(err);
-                        callback(genericFailure, err, null);
-                    }
-                });
-            }
-        });
-    },
-
-    createUser: function(req, res) {
-        var object = createEmptyUserObject(req.body.email, req.body.name, req.body.uid, req.body.type, req.body.kidsCount, req.body.maritalStatus, req.body.linkedin, req.body.facebook, req.body.instagram, req.body.ageRanges, req.body.kidsNames);
-        addFor(kUsers, object, function (success, error, document) {
-            updateFor(kUsers, document.id, { "key": document.id }, function (success, error, data) {
-                var data = { "userId": document.id }
-                handleJSONResponse(200, error, success, data, res);
-            })
-        });
-    },
-
-    createMatch: function(req, res) {
-        async.parallel({
-            addMatch: function(callback) {
-                main.mongodb.actioncol(function(collection) {
-                    collection.updateOne(
-                        {
-                            "_id": req.body.senderId
-                        },{
-                            $set: {
-                                _id: req.body.senderId,
-                                createdAt: new Date(),
-                                blocked: []
-                            }, 
-                            $addToSet: { matches: req.body.recipientId }
-                        },{
-                            multi: true,
-                            upsert: true
-                        }
-                    , function(err, result) {
-                        callback(err, result);
-                    });
-                });
-                
-            },
-            checkForMatch: function(callback) {
-                var query = {}
-                var find = {
-                    _id: {
-                        $eq: req.body.recipientId
-                    }, 
-                    matches: {
-                        $in: [req.body.senderId]
-                    },
-                    blocked: {
-                        $nin: [req.body.senderId]
-                    }
-                }
-                main.mongodb.actioncol(function(collection) {
-                    collection.find(
-                        find,
-                        query
-                    ).toArray(function(err, docs) {
-                        var data = {};
-                        var finalData = new Array;
-                        async.each(docs, function(doc, completion) {
-                            checkForUser(doc._id, function(success, error, result) {
-                                if (result !== null) {
-                                    result.docId = doc._id
-                                    finalData.push(generateUserModel(result));
-                                    return completion();
-                                } else {
-                                    return completion();
-                                }
-                            });
-                        }, function(err) {
-                            if (err) {
-                                callback(err, null);
-                            } else {
-                                if (finalData.length > 0 || finalData !== null) {
-                                    data.users = finalData.filter(x => x);
-                                    callback(err, data);
-                                } else {
-                                    data.users = [];
-                                    callback(err, data);
-                                }
-                            }
-                        });
-                    });
-                });
-            },
-        }, function(err, results) {
-            if (err) return handleJSONResponse(200, err, genericFailure, results, res);
-            var data = results.checkForMatch;
-            handleJSONResponse(200, err, genericSuccess, data, res);
-        });
-    },
-
-    findMatch: function(req, res) {
-        checkForMatch(req.body.recipientId, req.body.senderId, function(success, error, results) {
-            var data = { "match": results[0] };
-            handleJSONResponse(200, error, success, data, res);
-        });
-    },
-
-    createConversation: function(req, res) {
-        var object = createConversationObject(req.body.senderId, req.body.recipientId);
-        addFor(kConversations, object, function (success, error, data) {
-            handleJSONResponse(200, error, success, data, res);
-        });
-    },
-
-    findConversations: function(req, res) {
-        //  Check if I already have a conversation started
-        checkForConversation(req.body.senderId, function(success, error, conversations) {
-
-            if (error) return handleJSONResponse(200, error, success, conversations, res);
-
-            var conversationArray = new Array();
-            if (conversations.length > 0) {
-                async.each(conversations, function(result, callback) {
-                    var doc = result;
-                    var trueRecipientId = doc.senderId === req.body.senderId ? doc.recipientId : doc.senderId;
-                    async.parallel({
-                        recipient: function(callback) {
-                            checkForUser(doc.recipientId, function(success, error, result) {
-                                if (result !== null) {
-                                    var userData = generateUserModel(result);
-                                    callback(null, userData);
-                                } else {
-                                    callback(null, null);
-                                }
-                            });
-                        },
-                        sender: function(callback) {
-                            checkForUser(doc.senderId, function(success, error, result) {
-                                if (result !== null) {
-                                    var userData = generateUserModel(result);
-                                    callback(null, userData);
-                                } else {
-                                    callback(null, null);
-                                }
-                            });
-                        },
-                        lastMessage: function(callback) {
-                            if (typeof doc.lastMessageId === "undefined") {
-                                console.log("Last message does not exist");
-                                callback(null, generateEmptyMessageModel());
-                            } else {
-                                retrieve("messages", doc.lastMessageId, function(success, error, data) {
-                                    var message;
-                                    if (data) { 
-                                        message = data;
-                                        message.id = doc.lastMessageId;
-                                    }
-                                    var object = generateMessageModel(message, message);
-                                    callback(null, object);
-                                });
-                            }
-                        },
-                        trueRecipient: function(callback) {
-                            checkForUser(trueRecipientId, function(success, error, result) {
-                                if (result !== null) {
-                                    var userData = generateUserModel(result);
-                                    callback(null, userData);
-                                } else {
-                                    callback(null, null);
-                                }
-                            });
-                        }
-                    }, function(err, results) {
-                        doc.sender = results.sender;
-                        doc.recipient = results.recipient;
-                        doc.trueRecipient = results.trueRecipient;
-                        doc.lastMessage = results.lastMessage;
-                        conversationArray.push(doc);
-                        callback();
-                    });
-                }, function(err) {
-                    if (err) {
-                        handleJSONResponse(200, genericError, genericFailure, null, res);
-                    } else {
-                        var data = { "conversations": conversationArray };
-                        handleJSONResponse(200, error, success, data, res);
-                    }
-                });
-            } else {
-                handleJSONResponse(200, error, success, null, res);
-            }
-        });
-    },
-
-    findConversation: function(id, res) {
-        //  Check if I already have a conversation started
-        retrieveFor(kConversations, id, function(success, error, document) {
-            var convo = generateConversationModel(document, document.data());
-            //  Get Recipient & Sender User Object
-            async.parallel({
-                recipient: function(callback) {
-                    retrieveFor(kUsers, convo.recipientId, function(success, error, document) {
-                        var object = generateUserModel(document, document.data());
-                        callback(null, object);
-                    });
-                },
-                sender: function(callback) {
-                    retrieveFor(kUsers, convo.senderId, function(success, error, document) {
-                        var object = generateUserModel(document, document.data());
-                        callback(null, object);
-                    });
-                },
-                lastMessage: function(callback) {
-                    console.log(convo);
-                    if (typeof convo.lastMessageId === 'undefined') {
-                        console.log("Last message does not exist");
-                        callback(null, null);
-                    } else {
-                        retrieveFor(kMessages, convo.lastMessageId, function(success, error, document) {
-                            var object = generateMessageModel(document, document.data());
-                            callback(null, object);
-                        });
-                    }
-                }
-            }, function(err, results) {
-                convo.sender = results.sender;
-                convo.recipient = results.recipient;
-                if (typeof convo.lastMessageId !== 'undefined') {
-                    if (results.lastMessage.senderId === convo.senderId) {
-                        results.lastMessage.sender = results.sender;
-                    }
-                    if (results.lastMessage.senderId === convo.recipientId) {
-                        results.lastMessage.sender = results.recipient;
-                    }
-                    convo.lastMessage = results.lastMessage
-                }
-                var data = { "conversation": convo };
-                handleJSONResponse(200, error, success, data, res);
-            });
-        });
-    },
-
-    updateConversation: function(req, res) {
-        updateFor(kConversations, req.body.conversationKey, { "lastMessageId" : req.body.messageId, "updatedAt" : new Date() }, function (success, error, data) {
-            handleJSONResponse(200, error, success, data, res);
-        });
-    },
-
-    uploadPicture: function(req, res) {
-        updateFor(kUsers, req.userId, { 
-            "userProfilePicture_1_url": req.userProfilePicture_1_url,
-            "userProfilePicture_1_meta": req.userProfilePicture_1_meta,
-            "userProfilePicture_2_url": req.userProfilePicture_2_url,
-            "userProfilePicture_2_meta": req.userProfilePicture_2_meta,
-            "userProfilePicture_3_url": req.userProfilePicture_3_url,
-            "userProfilePicture_3_meta": req.userProfilePicture_3_meta,
-        }, function (success, error, data) {
-            handleJSONResponse(200, error, success, data, res);
-        });
-    },
-
-    createMapItem: function(req, res, callback) {
-        addFor(kMapItems, req.body, function (success, error, document) {
-            if (error) return handleJSONResponse(200, error, success, data, res);
-            var data = { "itemId": document.id }
-            callback(data);
-        });
-    },
-
-    addToMap: function(req, res) {
-        var userGeohash = geohash.encode(req.body.latitude, req.body.longitude, 10);
-        main.mongodb.mapitemcol(function(collection) {
-            console.log("Adding to map");
-            collection.insertOne( 
-                {
-                    itemId: req.body.itemId,
-                    userId: req.body.userId,
-                    type: req.body.type,
-                    startDate: req.body.startDate,
-                    name: req.body.name,
-                    address: req.body.address,
-                    h: userGeohash,
-                    location: {
-                        type: "Point", 
-                        coordinates: [ parseFloat(req.body.longitude), parseFloat(req.body.latitude) ]
-                    }
-                }, function(err) {
-                    console.log(err);
-                    if (err) return handleJSONResponse(200, err, genericFailure, null, res);
-                    res.status(200).json({
-                        "status": 200,
-                        "success": { "result" : true, "message" : "Request was successful" },
-                        "data": req.body,
-                        "error": null
-                    });
-                }
-            )
-        });
-    },
-
-    retrieveForMap: function(req, res) {
-        var pageNo = parseInt(req.body.pageNo)
-        var size = 1000
-        var perPage = parseInt(req.body.perPage)
-        var query = {}
-        var find = {
-            userId: {
-                $nin: [req.body.userId]
-            }, 
-            location: { 
-                $near: {
-                    $geometry: { 
-                        type: "Point",  
-                        coordinates: [ parseFloat(req.body.longitude),parseFloat(req.body.latitude) ] },
-                    $maxDistance: getMeters(parseFloat(req.body.maxDistance))
-                }
-            }
-        }
-        if (pageNo < 0 || pageNo === 0) {
-            return handleJSONResponse(200, invalidPageFailure, genericFailure, null, res);
-        }
-        query.skip = size * (pageNo - 1)
-        query.limit = size
-
-        console.log(find);
-        
-        main.mongodb.mapitemcol(function(collection) {
-            collection.find(
-                find,
-                query
-            ).toArray(function(error, docs) {
-                if (docs !== null) {
-                    console.log(docs);
-                    var resultsCount = docs.length;
-                    var totalPages = Math.ceil(resultsCount / size);
-                    var data = {
-                        "currentPage": pageNo,
-                        "nextPage": totalPages > pageNo ? pageNo + 1: totalPages,
-                        "totalPages": totalPages,
-                        "resultsCount": 0,
-                        "resultsPerPage": perPage,
-                    }
-                    data.users = new Array;
-                    var success;
-
-                    if (resultsCount > 0) {
-                        success = genericSuccess;
-                        var finalData = new Array;
-
-                        async.each(docs, function(doc, completion) {
-                            checkForUser(doc.userId, function(success, error, result) {
-                                if (result !== null) {
-
-                                    //console.log("Result is not null");
-                                    var obj = result;
-                                    obj.docId = doc._id;
-
-                                    if (obj.ageRangeId <= parseFloat(req.body.ageRangeId)) {
-                                        var emptyImages = [obj.userProfilePicture_1_url, obj.userProfilePicture_2_url, obj.userProfilePicture_3_url, obj.userProfilePicture_4_url, obj.userProfilePicture_5_url, obj.userProfilePicture_6_url]
-                                        if (emptyImages.filter(x => x).length > 0) {
-                                            //console.log(obj);
-                                            finalData.push(generateUserModel(obj));
-                                            data.resultsCount += 1;
-                                            return completion();
-                                        } else {
-                                            //console.log("Does not include images");
-                                            return completion();
-                                        }
-                                    } else {
-                                        //console.log("Does not include age range ID");
-                                        finalData.push(generateUserModel(obj));
-                                        data.resultsCount += 1;
-                                        return completion();
-                                    }
-                                } else {
-                                    return completion();
-                                }
-                            });
-                        }, function(err) {
-                            //console.log("Final data: ", finalData);
-                            if (err) {
-                                console.log(err);
-                                return handleJSONResponse(200, err, success, data, res);
-                            } else {
-                                if (finalData.length > 0 || finalData !== null) {
-                                    //data.resultsCount += 1;
-                                    data.users = finalData.filter(x => x);
-                                    return handleJSONResponse(200, null, success, data, res);
-                                } else {
-                                    return handleJSONResponse(200, genericError, genericFailure, data, res);
-                                }
-                            }
-
-                        });
-                    } else {
-                        success = genericFailure;
-                        return handleJSONResponse(200, error, success, data, res);
-                    }
-                } else {
-                    return handleJSONResponse(200, error, success, data, res);
-                }
-            });
-        });
-    },
-
-    saveLocation: function(req, res) {
-        // main.firebase.generate_geopoint(parseFloat(req.body.latitude), parseFloat(req.body.longitude), function(geopoint) {
-        //     var data = geopoint;
-        //     data["addressLat"] = parseFloat(req.body.latitude);
-        //     data["addressLong"] = parseFloat(req.body.longitude);
-        //     data["addressState"] = req.body.addressState || "";
-        //     data["addressCity"] = req.body.addressCity || "";
-        //     data["addressCountry"] = req.body.addressCountry || ""; 
-        //     data["addressZipCode"] = req.body.addressZipCode || "";
-        //     updateFor(kUsers, req.body.userId, data, function (success, error, data) {
-        //         handleJSONResponse(200, error, success, data, res);
-        //     });
-        // });       
-    },
-
-    deleteUser: function(req, res) {
-        deleteFor(kUsers, req.body.userId, function (success, error, data) {
-            handleJSONResponse(200, error, success, data, res);
-        });
-    },
-
-    getNearByUsers: function(req, res) {
-        main.firebase.firebase_geo(function(geo) {
-            main.firebase.generate_geopoint(Number(req.body.latitude), Number(req.body.longitude), function(center) {
-
-                // Proof of concept
-                const geocollection = geo.collection(kUsers);
-                console.log(center);
-                var queryOne = geocollection.near({ center: center, radius: 1000 });
-                queryOne.orderedBy('uid');
-                queryOne.limit(10);
-
-                // Get query (as Promise)
-                queryOne.get().then(function(querySnapshot) {
-                    var data = querySnapshot.docs.map(function(doc) {
-                        var d = doc.data();
-                        d.key = doc.id;
-                        return d;
-                    });
-                    if (Object.keys(data).length > 0) {
-                        var return_data = { "user": data[0] };
-                        handleJSONResponse(200, null, genericSuccess, return_data, res);
-                    } else {
-                        handleJSONResponse(200, genericFailure, genericError, null, res);
-                    }
-                }, function(err) {
-                    if (err) {
-                        console.log(err);
-                        callback(genericFailure, err, null);
-                        handleJSONResponse(200, genericFailure, err, null, res);
-                    }
-                });
-            });
-        });
-    }
-}
-
-function checkForUser (uid, callback) {
-    main.firebase.firebase_firestore_db(function(reference) {
-        if (!reference) { 
-            callback(genericFailure, genericError, null);
-        } else {
-            var ref = reference.collection(kUsers);        
-            var query = ref.where('uid','==', uid);
-            query.get().then(function(querySnapshot) {
-                var data = querySnapshot.docs.map(function(doc) {
-                    var d = doc.data();
-                    d.key = doc.id;
-                    return d;
-                });
-                if (Object.keys(data).length > 0) {
-                    callback(genericSuccess, null, data[0]);
-                } else {
-                    callback(genericFailure, genericError, null);
-                }
-            }, function(err) {
-                if (err) {
-                    console.log(err);
-                    callback(genericFailure, err, null);
-                }
-            });
-        }
-    });
-}
-
-function checkForMapItem (uid, callback) {
-    main.firebase.firebase_firestore_db(function(reference) {
-        if (!reference) { 
-            callback(genericFailure, genericError, null);
-        } else {
-            var ref = reference.collection(kMapItems);        
-            var query = ref.where('uid','==', uid);
-            query.get().then(function(querySnapshot) {
-                var data = querySnapshot.docs.map(function(doc) {
-                    var d = doc.data();
-                    d.key = doc.id;
-                    return d;
-                });
-                if (Object.keys(data).length > 0) {
-                    callback(genericSuccess, null, data[0]);
-                } else {
-                    callback(genericFailure, genericError, null);
-                }
-            }, function(err) {
-                if (err) {
-                    console.log(err);
-                    callback(genericFailure, err, null);
-                }
-            });
-        }
-    });
-}
-
-function checkForMatch (recipientId, senderId, callback) {
-    var parameters = [
-        {
-            key: "recipientId",
-            condition: "==", 
-            value: senderId
-        },{
-            key: "senderId",
-            condition: "==", 
-            value: recipientId
-        }
-    ]
-    retrieveWithParameters(kMatches, parameters, function(success, error, snapshots) {
-        callback(success, error, snapshots);
-    });
-}
-
-function checkForConversation (senderId, callback) {
-    main.firebase.firebase_firestore_db(function(reference) {
-        if (!reference) { 
-            callback(genericFailure, genericError, null);
-        } else {
-            var conversationArray = new Array();
-            async.parallel({
-                findRecipientConversations: function(callback) {
-                    var ref = reference.collection(kConversations);        
-                    var query = ref.where('recipientId','==', senderId);
-                    query.get().then(function(querySnapshot) {
-                        var data = querySnapshot.docs.map(function(doc) {
-                            var d = doc.data();
-                            d.key = doc.id;
-                            return d;
-                        });
-                        if (Object.keys(data).length > 0) {
-                            callback(null, data);
-                        } else {
-                            callback(null, null);
-                        }
-                    });
-                },
-                findSenderConversations: function(callback) {
-                    var ref = reference.collection(kConversations);        
-                    var query = ref.where('senderId','==', senderId);
-                    query.get().then(function(querySnapshot) {
-                        var data = querySnapshot.docs.map(function(doc) {
-                            var d = doc.data();
-                            d.key = doc.id;
-                            return d;
-                        });
-                        if (Object.keys(data).length > 0) {
-                            callback(null, data);
-                        } else {
-                            callback(null, null);
-                        }
-                    });
-                }
-            }, function(err, results) {
-                var conversationArray = new Array();
-
-                if (results.findSenderConversations) {
-                    results.findSenderConversations.forEach(function(conversation) {
-                        conversationArray.push(conversation);
-                    });
-                }
-
-                if (results.findRecipientConversations) {
-                    results.findRecipientConversations.forEach(function(conversation) {
-                        conversationArray.push(conversation);
-                    });
-                }
-
-                if (conversationArray.length > 0 ) {
-                    console.log(conversationArray);
-                    callback(genericSuccess, null, conversationArray);
-                } else {
-                    callback(genericSuccess, genericError, null);
-                }
-            });
-        }
-    });
-}
-
-function checkForMessages (conversationId, callback) {
-    var parameters = [
-        {
-            key: "conversationId",
-            condition: "==", 
-            value: conversationId
-        }
-    ]
-    retrieveWithParameters(kMessages, parameters, function(success, error, results) {
-        callback(success, error, results);
-    });
-}
-
-//  MARK:- MODEL FACTORIES
-function createEmptyUserObject(email, name, uid, type, kidsCount, maritalStatus, linkedin, facebook, instagram, ageRanges, kidsNames, refreshToken) {
-    var data = {
-        id: randomstring.generate(25),
-        refreshToken: refreshToken,
-        email: email,
-        name: name,
-        uid: uid,
-        deviceId: null,
-        createdAt: new Date(),
-        lastLogin: new Date(),
-        type: type,
-        maritalStatus: maritalStatus,
-        preferredCurrency: 'USD',
-        notifications : false,
-        maxDistance : 25.0,
-        ageRangeId: ageRanges,
-        ageRangeMin: 0,
-        ageRangeMax: 0,
-        initialSetup : false,
-        userProfilePicture_1_url: null,
-        userProfilePicture_1_meta: null,
-        userProfilePicture_2_url: null,
-        userProfilePicture_2_meta: null,
-        userProfilePicture_3_url: null,
-        userProfilePicture_3_meta: null,
-        userProfilePicture_4_url: null,
-        userProfilePicture_4_meta: null,
-        userProfilePicture_5_url: null,
-        userProfilePicture_5_meta: null,
-        userProfilePicture_6_url: null,
-        userProfilePicture_6_meta: null,
-        dob: null,
-        addressLine1 : null,
-        addressLine2 : null,
-        addressLine3 : null,
-        addressLine4 : null,
-        addressCity : null,
-        addressState : null,
-        addressZipCode : null,
-        addressLong : null,
-        addressLat : null,
-        addressCountry: null,
-        addressDescription: null,
-        bio: null,
-        jobTitle: null,
-        companyName: null,
-        schoolName: null,
-        kidsCount: 0,
-        kidsNames: kidsNames,
-        kidsAges: null,
-        kidsBio: null,
-        kidsCount: kidsCount,
-        questionOneTitle: null,
-        questionOneResponse: null,
-        questionTwoTitle: null,
-        questionTwoResponse: null,
-        questionThreeTitle: null,
-        questionThreeResponse: null,
-        canSwipe: true,
-        nextSwipeDate: null,
-        profileCreation : false,
-        socialInstagram: instagram,
-        socialFacebook: facebook,
-        socialLinkedIn: linkedin
-    }
-    if (ageRanges == 0) {
-        data.ageRangeMin = 2;
-        data.ageRangeMax = 4;
-    }
-
-    if (ageRanges == 1) {
-        data.ageRangeMin = 4;
-        data.ageRangeMax = 7;
-    }
-
-    if (ageRanges == 2) {
-        data.ageRangeMin = 7;
-        data.ageRangeMax = 10;
-    }
-
-    if (ageRanges == 3) {
-        data.ageRangeMin = 10;
-        data.ageRangeMax = 13;
-    }
-    return data
-}
-
-function createMessageObject(conversationId, message, senderId) {
-    var data = {
-        id: randomstring.generate(25),
-        conversationId: conversationId,
-        message: message,
-        createdAt: new Date(),
-        senderId: senderId,
-        attachment: null
-    }
-    return data
-}
-
-function createConversationObject(senderId, recipientId) {
-    var data = {
-        id: randomstring.generate(25),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        owner: senderId,
-        participants: [senderId, recipientId],
-        lastMessageId: null,
-        lastMessageText: null,
-    }
-    return data
-}
-
-function createEmptyActionObject(uid) {
-    var data = {
-        id: randomstring.generate(25),
-        owner: uid,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        likes: [],
-        matches: [],
-        blocked: [],
-        conversations: [],
-    }
-    return data
-}
-
-function createCategoryObject(label) {
-    var data = {
-        id: randomstring.generate(25),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        label: label
-    }
-    return data
-}
-
-function createPostObject(senderId, type, categories, description, media) {
-    var data = {
-        id: randomstring.generate(25),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        owner: senderId,
-        type: type,
-        categories: categories,
-        description: description,
-        media: media,
-    }
-    return data
-}
-
-function createEngagementObject(senderId, type, comment, post) {
-    var data = {
-        id: randomstring.generate(25),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        owner: senderId,
-        type: type,
-        post: post,
-        comment: comment,
-    }
-    return data
-}
-
-function createNotificationObject(senderId, ownerId, type, comment, post) {
-    var data = {
-        id: randomstring.generate(25),
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        senderId: senderId,
-        owner: ownerId,
-        post: post,
-        type: type,
-        comment: comment,
-    }
-    return data
-}
-
-function sendNotification(notificationObject, res) {
-    main.mongodb.usergeo(function(collection) {
-        collection.findOne(
-        {
-            uid: notificationObject.owner
-        }, function(err, result) {
-            if (err) {
-                if (!res) return console.log("No user available");
-                res.status(200).json({
-                    "status": 200,
-                    "success": { 
-                        "result" : true, 
-                        "message" : "Notification was not sent" 
-                    },
-                    "data": null,
-                    "error": err
-                });
-            } 
-          
-            if (!result) {
-                if (!res) return console.log("No user available");
-                res.status(200).json({
-                    "status": 200,
-                    "success": { 
-                        "result" : true, 
-                        "message" : "Notification was not sent" 
-                    },
-                    "data": null,
-                    "error": err
-                });
-            }
-
-            const user = generateUserModel(result);
-            var payload = {
-                notification: {
-                    badge: '1',
-                    title: 'Message from DadHive',
-                    body: 'Someone interacted with your activity! Check it out now!',
-                }
-                
-            }
-
-            var options = {
-                priority: 'high',
-                timeToLive: 60 * 60 * 24, // 1 day
-            }
-
-            main.firebase.firebase_admin(function(fcm) {
-                fcm.messaging().sendToDevice(user.settings.deviceId, payload, options).then(function(response) {
-                    // See the MessagingDevicesResponse reference documentation for
-                    // the contents of response.
-                    console.log('Successfully sent message:', response);
-                    if (!res) return console.log("Successfully sent with response: ", response);
-                    res.status(200).json({
-                        "status": 200,
-                        "success": { 
-                            "result" : true, 
-                            "message" : "Notification was sent" 
-                        },
-                        "data": {
-                            "notification": response
-                        },
-                        "error": err
-                    });
-                }).catch(function(error) {
-                    console.log('Error sending message:', error);
-                    if (err) {
-                        if (!res) return console.log("Something went wrong trying to send message: ", response);
-                        res.status(200).json({
-                            "status": 200,
-                            "success": { 
-                                "result" : false, 
-                                "message" : "Notification was not sent" 
-                            },
-                            "data": {
-                                "notification": response
-                            },
-                            "error": error
-                        });
-                    }        
-                });
-            })
-        });
-    });    
-}
-
-//  MARK:- Model Generators
-function generateUserModel(doc) {
-    var data = { 
-        key: doc.key,
-        accessToken: doc.token,
-        refreshToken: doc.refreshToken,
-        uid: doc.uid,
-        docId: doc.docId,
-        name: {
-            name: doc.name
-        },
-        createdAt: doc.createdAt,
-        email: doc.email,
-        type: doc.type,
-        dob: doc.dob,
-        currentPage: doc.currentPage,
-        settings: {
-            deviceId: doc.deviceId,
-            preferredCurrency: doc.preferredCurrency,
-            notifications : doc.notifications,
-            location: {
-                addressLat: doc.addressLat,
-                addressLong: doc.addressLong,
-                addressCity: doc.addressCity,
-                addressState: doc.addressState,
-                addressDescription: doc.addressDescription,
-                addressCountry: doc.addressCountry,
-                addressLine1 : doc.addressLine1,
-                addressLine2 : doc.addressLine2,
-                addressLine3 : doc.addressLine3,
-                addressLine4 : doc.addressLine4,
-            },
-            maxDistance: doc.maxDistance,
-            ageRange: {
-                id: doc.ageRangeId,
-                min: doc.ageRangeMin,
-                max: doc.ageRangeMax
-            },
-            initialSetup: doc.initialSetup,
-        },
-        mediaArray: [
-            {
-                url: doc.userProfilePicture_1_url,
-                meta: doc.userProfilePicture_1_meta,
-                order: 1
-            }, {
-                url: doc.userProfilePicture_2_url,
-                meta: doc.userProfilePicture_2_meta,
-                order: 2
-            }, {
-                url: doc.userProfilePicture_3_url,
-                meta: doc.userProfilePicture_3_meta,
-                order: 3
-            }, {
-                url: doc.userProfilePicture_4_url,
-                meta: doc.userProfilePicture_4_meta,
-                order: 4
-            }, {
-                url: doc.userProfilePicture_5_url,
-                meta: doc.userProfilePicture_5_url,
-                order: 5
-            }, {
-                url: doc.userProfilePicture_6_url,
-                meta: doc.userProfilePicture_6_meta,
-                order: 6
-            }
-        ],
-        userInformationSection1: [
-            {
-                type: "location",
-                title: "Location",
-                info: doc.addressCity + ", " + doc.addressState,
-                image: "location"
-            }, {
-                type: "bio",
-                title: "About Me",
-                info: doc.bio,
-                image: "bio"
-            }, {
-                type: "companyName",
-                title: "Work",
-                info: doc.companyName,
-                image: "company"
-            }, {
-                type: "jobTitle",
-                title: "Job Title",
-                info: doc.jobTitle,
-                image: "job"
-            }, {
-                type: "schoolName",
-                title: "School / University",
-                info: doc.schoolName,
-                image: "school"
-            }
-        ],
-        userInformationSection2: [
-            {
-                type: "kidsNames",
-                title: "Name(s) of my kid(s)",
-                info: doc.kidsNames
-            }, {
-                type: "kidsAges",
-                title: "My kid(s) age range",
-                info: doc.kidsAges
-            }, {
-                type: "kidsBio",
-                title: "About my kid(s)",
-                info: doc.kidsBio
-            }, {
-                type: "kidsCount",
-                title: "Number of kids",
-                info: doc.kidsCount
-            }
-        ],
-        userInformationSection3: [
-            {
-                type: "questionOne",
-                title: doc.questionOneTitle,
-                info: doc.questionOneResponse,
-                image: "question"
-            }, {
-                type: "questionTwo",
-                title: doc.questionTwoTitle,
-                info: doc.questionTwoResponse,
-                image: "question"
-            }, {
-                type: "questionThree",
-                title: doc.questionThreeTitle,
-                info: doc.questionThreeResponse,
-                image: "question"
-            }
-        ],
-        userPreferencesSection: [
-            {
-                type: "ageRange",
-                title: "Age Range",
-                info: {
-                    ageRangeId: doc.ageRangeId,
-                    ageRangeMin: doc.ageRangeMin,
-                    ageRangeMax: doc.ageRangeMax
-                }
-            }, {
-                type: "maxDistance",
-                title: "Maximum Distance",
-                info: doc.maxDistance
-            }
-        ],
-        canSwipe: doc.canSwipe,
-        nextSwipeDate: doc.nextSwipeDate,
-        profileCreation : doc.profileCreation,
-        lastId: doc.lastId,
-        matches: doc.matches,
-    }
-    if (doc.actions_results && doc.actions_results.length > 0) {
-        data.actions_results = generateActionModel(doc.actions_results[0])
-    }
-    return data
-}
-
-function generateActionModel(doc) {
-    var data = {
-        _id: doc._id,
-        id: doc.id,
-        owner: doc.owner,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-        likes: doc.likes,
-        matches: doc.matches,
-        blocked: doc.blocked,
-        conversations: doc.conversations,
-    }
-    return data
-}
-
-// MARK:- CONVERSATIONS
-function generateConversationsModel(docs) {
-    var objects = new Array();
-    docs.forEach(function(doc) {
-        objects.push(generateConversationModel(doc));
-    });
-    return categories
-}
-
-function generateConversationModel(doc) {
-    var data = { 
-        _id: doc._id,
-        id: doc.id,
-        owner: doc.senderId,
-        participants: doc.participants,
-        createdAt: doc.createdAt,
-        lastMessageId: doc.lastMessageId,
-        updatedAt: doc.updatedAt
-    }
-    return data
-}
-
-// MARK:- MESSAGES
-function generateMessagesModel(docs) {
-    var objects = new Array();
-    docs.forEach(function(doc) {
-        objects.push(generateMessageModel(doc));
-    });
-    return categories
-}
-
-function generateMessageModel(document, doc) {
-    var data = { 
-        key: document.id,
-        id: doc.id,
-        conversationId: doc.conversationId,
-        senderId: doc.senderId,
-        message: doc.message,
-        createdAt: doc.createdAt || new Date()
-    }
-    return data
-}
-
-function generateEmptyMessageModel() {
-    var data = { 
-        key: "",
-        id: "",
-        conversationId: "",
-        senderId: "",
-        message: "Say hello!",
-        createdAt: ""
-    }
-    return data
-}
-
-// MARK:- CATEGORIES
-function generateCategoryModels(docs) {
-    var categories = new Array();
-    docs.forEach(function(doc) {
-        categories.push(generateCategoryModel(doc));
-    });
-    return categories
-}
-
-function generateCategoryModel(doc) {
-    var data = {
-        _id: doc._id,
-        id: doc.id,
-        createdAt: doc.createdAt,
-        updatedAt: doc.updatedAt,
-        label: doc.label
-    }
-    return data
-}
-
-// MARK:- POSTS
-function generatePostObjects(docs) {
-    var array = new Array();
-    docs.forEach(function(doc) {
-        array.push(generatePostObject(doc));
-    });
-    return array
-}
-
-function generatePostObject(doc) {
-    console.log("Post object is")
-    console.log(doc);
-    var data = {
-        id: doc.id,
-        _id: doc._id,
-        createdAt: timeAgo(doc.createdAt),
-        updatedAt: doc.updatedAt,
-        type: doc.type,
-        description: doc.description,
-        media: doc.media,
-        numOfLikes: doc.likes,
-        numOfComments: doc.comments,
-        numOfUpvotes: doc.upvotes,
-        numOfDownvotes: doc.downvotes,
-        myLike: doc.myLike
-    }
-
-    if (typeof(doc._owner) !== "undefined") {
-        if (doc._owner.length > 0) {
-            data.owner = doc._owner.map(generateUserModel);
-        }
-    }
-    if (typeof(doc._categories) !== "undefined") {
-        if (doc._categories.length > 0) {
-            data.categories = doc._categories.map(generateCategoryModel);
-        }
-    }
-
-    if (typeof(doc._engagements) !== "undefined" ) {
-        if (doc._engagements.length > 0) {
-            data.engagements = doc._engagements.map(generateEngagementObject);
-        }
-    }
-
-    return data
-}
-
-// MARK:- ENGAGEMENTS
-function generateEngagementObjects(docs) {
-    var array = new Array();
-    docs.forEach(function(doc) {
-        array.push(generateEngagementObject(doc));
-    });
-    return array
-}
-
-function generateEngagementObject(doc) {
-    var data = {
-        id: doc.id,
-        createdAt: timeAgo(doc.createdAt),
-        updatedAt: doc.updatedAt,
-        owner: doc._owner.map(generateUserModel),
-        type: doc.type,
-        comment: doc.comment,
-        post: doc.post,
-        numOfLikes: doc.likes,
-        numOfComments: doc.comments,
-        numOfUpvotes: doc.upvotes,
-        numOfDownvotes: doc.downvotes,
-        myLike: doc.myLike
-    }
-
-    if (typeof doc.media !== 'undefined') {
-        data.media = doc.media;
-    }
-
-    return data
-}
-
-// MARK: - Activity
-function generateNotifcationObjects(docs) {
-    var array = new Array();
-    console.log(docs.length);
-    docs.forEach(function(doc) {
-        array.push(generateNotifcationObject(doc));
-    });
-    return array
-}
-
-function generateNotifcationObject(doc) {
-    var data = {
-        _id: doc._id,
-        id: doc.id,
-        createdAt: timeAgo(doc.createdAt),
-        updatedAt: doc.updatedAt,
-        type: doc.type,
-    }
-    
-
-    if (typeof(doc._senderId) !== "undefined" ) {
-        if (doc._senderId.length > 0) {
-            data.senderId = doc._senderId.map(generateUserModel);
-        }
-    }
-
-    if (typeof(doc._owner) !== "undefined" ) {
-        if (doc._owner.length > 0) {
-            data.owner = doc._owner.map(generateUserModel);
-        }
-    }
-
-    if (typeof(doc._post) !== "undefined" ) {
-        if (doc._post.length > 0) {
-            data.post = doc._post.map(generatePostObject);
-        }
-    }
-
-    if (typeof(doc.comment) !== "undefined" ) {
-        data.comment = doc.comment;
-    }
-
-    if ((typeof(data.owner) !== "undefined") && (typeof(data.post) !== "undefined" )) {
-        if (data.type === "1") {
-            data.message = (data.owner[0].name.name || "Someone") + " liked your post"
-        }
-
-        if (data.type === "2") {
-            data.message = (data.owner[0].name.name || "Someone") + " commented your post"
-        }
-
-        if (data.type === "3") {
-            data.message = (data.owner[0].name.name || "Someone") + " upvoted your post"
-        }
-    }
-    return data
-}
-
-function generateOthersNotifcationObjects(docs) {
-    var array = new Array();
-    console.log(docs.length);
-    docs.forEach(function(doc) {
-        array.push(generateOthersNotifcationObject(doc));
-    });
-    return array
-}
-
-function generateOthersNotifcationObject(doc) {
-    console.log(doc)
-    var data = {
-        _id: doc._id,
-        id: doc.id,
-        createdAt: timeAgo(doc.createdAt),
-        updatedAt: doc.updatedAt,
-        type: doc.type,
-    }
-
-    if (typeof(doc._post) !== "undefined" ) {
-        console.log("Post being parsed.")
-        data.post = [generatePostObject(doc._post)]
-    }
-
-    if (typeof(doc.comment) !== "undefined" ) {
-        data.comment = doc.comment;
-    }
-
-    if (data.type === "1") {
-        data.message = "You liked a post"
-    }
-
-    if (data.type === "2") {
-        data.message = "You commented on a post"
-    }
-
-    if (data.type === "3") {
-        data.message = "You upvoted a post"
-    }
-    return data
-}
-
-//  MARK:- UTILITIES
-function getMeters(fromMiles) {
-    return fromMiles * 1609.344;
-}
-
-function createSession(req, data) {
-    req.Rootedap93w8htrse4oe89gh9ows4t.user = data;
-    req.Rootedap93w8htrse4oe89gh9ows4t.uid = data.uid;
-    req.Rootedap93w8htrse4oe89gh9ows4t.token = data.token;
-    req.Rootedap93w8htrse4oe89gh9ows4t.refresh = data.refreshToken;
-}
-
-const MONTH_NAMES = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
-  
-
-function getFormattedDate(date, prefomattedDate = false, hideYear = false) {
-    var day = date.getDate();
-    var month = MONTH_NAMES[date.getMonth()];
-    var year = date.getFullYear();
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var getCurrentAmPm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12;
-    hours = hours ? hours : 12;    
-  
-    if (minutes < 10) {
-      // Adding leading zero to minutes
-      minutes = `0${ minutes }`;
-    }
-  
-    if (prefomattedDate) {
-        // Today at 10:20
-        // Yesterday at 10:20
-        //   return `${ prefomattedDate } at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
-        return `${ prefomattedDate }`;
-    }
-  
-    if (hideYear) {
-      // 10. January at 10:20
-      return `${ day }. ${ month } at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
-    }
-  
-    // 10. January 2017. at 10:20
-    return `${ day }. ${ month } ${ year }. at ${ hours }:${ minutes } ${ getCurrentAmPm }`;
-  }
-  
-  
-  // --- Main function
-  function formatAMPM(date) {
-    var hours = date.getHours();
-    var minutes = date.getMinutes();
-    var ampm = hours >= 12 ? 'pm' : 'am';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-    minutes = minutes < 10 ? '0'+minutes : minutes;
-    var strTime = hours + ':' + minutes + ' ' + ampm;
-    return strTime;
-  }
-  
-  function timeAgo(dateParam) {
-    if (!dateParam) {
-      return null;
-    }
-  
-    const date = typeof dateParam === 'object' ? dateParam : new Date(dateParam);
-    const DAY_IN_MS = 86400000; // 24 * 60 * 60 * 1000
-    const today = new Date();
-    const yesterday = new Date(today - DAY_IN_MS);
-    const seconds = Math.round((today - date) / 1000);
-    const minutes = Math.round(seconds / 60);
-    const isToday = today.toDateString() === date.toDateString();
-    const isYesterday = yesterday.toDateString() === date.toDateString();
-    const isThisYear = today.getFullYear() === date.getFullYear();
-  
-  
-    if (seconds < 5) {
-      return 'now';
-    } else if (seconds < 60) {
-      return `${ seconds } seconds ago`;
-    } else if (seconds < 90) {
-      return 'about a minute ago';
-    } else if (minutes < 60) {
-      return `${ minutes } minutes ago`;
-    } else if (isToday) {
-      return getFormattedDate(date, 'Today'); // Today at 10:20
-    } else if (isYesterday) {
-      return getFormattedDate(date, 'Yesterday'); // Yesterday at 10:20
-    } else if (isThisYear) {
-      return getFormattedDate(date, false, true); // 10. January at 10:20
-    }
-  
-    return getFormattedDate(date); // 10. January 2017. at 10:20
-  }
+    */

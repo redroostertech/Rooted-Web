@@ -15,8 +15,10 @@ router.use(session(configs.appSession));
 
 //  MARK:- Set up routes.
 var analyticsApiController = require(path.join(configs.baseRoutes, '/api/v1/analytics/api_analytics.js'));
+var authenticationController = require(path.join(configs.baseRoutes, '/api/v1/authentication/api_auth.js'));
 
 //  MARK:- Use Routes
 router.use('/analytics', analyticsApiController);
+router.use('/auth', authenticationController);
 
 module.exports = router;
