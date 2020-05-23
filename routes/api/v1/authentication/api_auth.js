@@ -8,6 +8,7 @@ const session                           = require('client-sessions');
 const formidable                        = require('formidable');
 const _                                 = require('underscore');
 const mime                              = require('mime');
+const randomstring  = require('randomstring');
 
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
@@ -39,7 +40,6 @@ router.post('/leo', function(req, res) {
     console.log(req.body);
     let action = req.body.action;
     if (action == 'email_registration') {
-        console.log()
         let email = req.body.email;
         let password = req.body.password;
 
@@ -59,6 +59,21 @@ router.post('/leo', function(req, res) {
                         "data": null,
                         "error_message": "Sorry! Something went wrong. Please try again later." 
                     });
+
+                    // Create user
+                    // var userObject = {
+                    //     id: auth.currentUser.uid,
+                    //     first_name: '',
+                    //     last_name: '',
+                    //     account_type_id: '1',
+                    //     phone_number_id: '1',
+                    //     location: '',
+                    //     gender: '',
+                    //     dob: '',
+
+                    // }
+
+
                     res.status(200).json({
                         "status": 200,
                         "success": true,
