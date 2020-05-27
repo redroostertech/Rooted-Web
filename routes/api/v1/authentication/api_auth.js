@@ -257,7 +257,7 @@ router.post('/leo', function(req, res) {
 
                             res.status(200).json({
                                 "status": 200,
-                                "success": false,
+                                "success": true,
                                 "data": {
                                     "uid": currentUser.uid,
                                     "user": users
