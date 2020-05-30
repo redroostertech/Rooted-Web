@@ -46,11 +46,13 @@
     "promise": "^7.1.1",
     "randomstring": "^1.1.5",
     "request": "^2.81.0",
+    "request-promise": "^4.2.5",
     "rxjs": "^6.5.2",
     "socket.io": "^2.2.0",
     "twilio": "^3.31.1",
     "underscore": "^1.8.3",
-    "xoauth2": "*"
+    "xoauth2": "*",
+    "zoomus": "^0.1.4"
   },
   "devDependencies": {
     "nodemon": "^1.19.1"
