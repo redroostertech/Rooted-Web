@@ -189,7 +189,7 @@ router.post('/eggman', function(req, res) {
                     "error_message": "You do not have the permission to delete this meeting."
                 });
 
-                reference.collection('meetings').doc(data.key).delete().then(function() {
+                reference.collection('meetings').doc(meeting.key).delete().then(function() {
                     res.status(200).json({
                         "status": 200,
                         "success": true,
