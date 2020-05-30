@@ -11,6 +11,7 @@ const mime                              = require('mime');
 const randomstring                      = require('randomstring');
 const jwt                               = require('jsonwebtoken');
 const rp                                = require('request-promise');
+const moment                            = require('moment');
 
 var Zoom = require('zoomus')({
     key: 'z8O78FV9TtG8H9lIxqwR6w',
@@ -24,6 +25,7 @@ const payload = {
 };
 const token = jwt.sign(payload, 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF');
 
+var getOptions = { source: 'cache' };
 
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
@@ -37,6 +39,13 @@ router.post('/eggman', function(req, res) {
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('users');
             let data = JSON.parse(req.body.data);
+
+            if (!req.body.uid) return res.status(200).json({
+                "status": 200,
+                "success": false,
+                "data": null,
+                "error_message": "Something went wrong. Please try again."
+            });
 
             doc(req.body.uid).set(data, { merge: true }).then(function() {
                 res.status(200).json({
@@ -77,6 +86,12 @@ router.post('/eggman', function(req, res) {
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
+        let startDate = data.meeting_date.start_date;
+        data.meeting_date.start_date = moment(startDate);
+
+        let endDate = data.meeting_date.end_date;
+        data.meeting_date.end_date = moment(endDate);
+
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
             refCollection.add(data).then(function(docRef) {
@@ -95,6 +110,33 @@ router.post('/eggman', function(req, res) {
                     "success": false,
                     "data": null,
                     "error_message": error.message
+                });
+            });
+        });
+    }
+
+    if (action == 'retrieve_meetings_for_user') {
+        if (!req.body.uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetings(req.body.uid, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
                 });
             });
         });
@@ -208,6 +250,70 @@ function getFirebaseFirStorageInstance(res, callback) {
             callback(reference);
         });
     });
+}
+
+function retrieveMeetings(uid, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection('meetings');
+    refCollection.where('owner_id','==', uid).where('meeting_date.end_date', '>=', new Date()).get(getOptions).then(function(querySnapshot) {
+        var users = new Array();
+
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
+            userDoc.key = doc.id;
+            
+            // Get the additional information for user
+            //  Preferences
+            //  Account Type
+            //  Card on File
+            async.parallel({
+                owner: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('id','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.owner) {
+                    userDoc.owner = results.owner
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "meetings": users
+            }
+            completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
 }
 
 module.exports = router;
