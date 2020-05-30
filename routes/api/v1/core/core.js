@@ -454,7 +454,11 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
             });
         }
 
-        completionHandler(err, meetings);
+        let data = {
+            "meetings": meetings
+        }
+
+        completionHandler(err, data);
     });
 }
 
