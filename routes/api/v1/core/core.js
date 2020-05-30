@@ -70,7 +70,7 @@ router.post('/eggman', function(req, res) {
         let data = req.body.data;
         console.log(data);
 
-        if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.ownerId) return res.status(200).json({
+        if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
