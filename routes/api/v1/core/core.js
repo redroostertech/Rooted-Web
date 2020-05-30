@@ -173,7 +173,16 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                if (data.owner_id !== req.body.owner_id) return res.status(200).json({
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                if (meeting.owner_id !== req.body.owner_id) return res.status(200).json({
                     "status": 200,
                     "success": false,
                     "data": null,
