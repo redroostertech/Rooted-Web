@@ -261,32 +261,16 @@ function retrieveMeetings(uid, reference, completionHandler) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
 
-            console.log(moment(userDoc.meeting_date.end_date).format("dddd, MMMM Do YYYY, h:mm:ss a"));
-
-            let startDate = data.meeting_date.start_date;
-            data.meeting_date.start_date = moment(startDate).unix().utc();
-    
-            let endDate = data.meeting_date.end_date;
-            data.meeting_date.end_date = moment(endDate).unix().utc();
-            
-            if (userDoc.meeting_date.end_date < moment().unix()) return completion();
+            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < 1) return completion();
 
             userDoc.key = doc.id;
-            
-            userDoc.meeting_date = {
-                end_date: userDoc.meeting_end_date,
-                start_date: userDoc.meeting_end_date
-            }
 
             // Get the additional information for user
-            //  Preferences
-            //  Account Type
-            //  Card on File
             async.parallel({
                 owner: function(callback) {
                     var owner = new Array();
                     let prefCollection = reference.collection('users');
-                    prefCollection.where('id','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                    prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
                         async.forEachOf(querysnapshot.docs, function(d, k, c) {
                             var prefdata = d.data();
                             prefdata.key = d.id;
