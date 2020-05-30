@@ -294,7 +294,8 @@ function retrieveMeetings(uid, reference, completionHandler) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
 
-            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < 1) return completion();
+            console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
+            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
 
             userDoc.key = doc.id;
 
@@ -357,9 +358,6 @@ function retrieveMeetingsById(id, reference, completionHandler) {
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
-
-            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < 1) return completion();
-
             userDoc.key = doc.id;
 
             // Get the additional information for user
