@@ -102,6 +102,33 @@ router.post('/eggman', function(req, res) {
         });
     }
 
+    if (action == 'retrieve_upcoming_meetings_for_user') {
+        if (!req.body.uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveUpcomingMeetings(req.body.uid, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+
     if (action == 'retrieve_meetings_for_user') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
@@ -285,8 +312,155 @@ function getFirebaseFirStorageInstance(res, callback) {
     });
 }
 
+function retrieveUpcomingMeetings(uid, reference, completionHandler) {
+    // Get the original user data
+    // Get the additional information for user
+    async.parallel({
+        other_meetings: function(callback) {
+            let refCollection = reference.collection('meetings');
+            refCollection.where('meeting_participants_ids','array-contains', uid).get(getOptions).then(function(querySnapshot) {
+                var users = new Array();
+
+                async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+                    var userDoc = doc.data();
+
+                    console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
+                    if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
+
+                    userDoc.key = doc.id;
+
+                    // Get the additional information for user
+                    async.parallel({
+                        owner: function(cback) {
+                            var owner = new Array();
+                            let prefCollection = reference.collection('users');
+                            prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                                async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                                    var prefdata = d.data();
+                                    prefdata.key = d.id;
+                                    owner.push(prefdata);
+                                    c();
+                                }, function(_e) {
+                                    if (_e) { 
+                                        console.log(_e.message);
+                                        cback(_e, owner);
+                                    } else {
+                                        cback(null, owner);
+                                    }
+                                });
+                            }).catch(function (error) {
+                                if (error) {
+                                    console.log(error.message);
+                                    cback(error, null);
+                                }
+                            });
+                        }
+                    }, function(error, results) {
+                        console.log(results);
+                        console.log(error);
+
+                        if (error) return callback(error, null);
+
+                        if (results.owner) {
+                            userDoc.owner = results.owner
+                        }
+
+                        users.push(userDoc);
+                        completion();
+                    });
+                }, function (err) {
+                    if (err) return callback(err, null);
+                    callback(err, users);
+                });
+            }).catch(function (error) {
+                callback(error, null);
+            });  
+        },
+
+        my_meetings: function(callback) {
+            let refCollection = reference.collection('meetings');
+            refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
+                var users = new Array();
+
+                async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+                    var userDoc = doc.data();
+
+                    console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
+                    if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
+
+                    userDoc.key = doc.id;
+
+                    // Get the additional information for user
+                    async.parallel({
+                        owner: function(cback) {
+                            var owner = new Array();
+                            let prefCollection = reference.collection('users');
+                            prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                                async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                                    var prefdata = d.data();
+                                    prefdata.key = d.id;
+                                    owner.push(prefdata);
+                                    c();
+                                }, function(_e) {
+                                    if (_e) { 
+                                        console.log(_e.message);
+                                        cback(_e, owner);
+                                    } else {
+                                        cback(null, owner);
+                                    }
+                                });
+                            }).catch(function (error) {
+                                if (error) {
+                                    console.log(error.message);
+                                    cback(error, null);
+                                }
+                            });
+                        }
+                    }, function(error, results) {
+                        console.log(results);
+                        console.log(error);
+
+                        if (error) return callback(error, null);
+
+                        if (results.owner) {
+                            userDoc.owner = results.owner
+                        }
+
+                        users.push(userDoc);
+                        completion();
+                    });
+                }, function (err) {
+                    if (err) return callback(err, null);
+                    callback(err, users);
+                });
+            }).catch(function (error) {
+                callback(error, null);
+            });  
+        }
+    }, function(err, results) {
+        if (err) return completionHandler(err, null);
+
+        var meetings = new Array();
+
+        if (results.my_meetings) {
+            results.my_meetings.forEach(function(meeting) {
+                meetings.push(meeting);
+            });
+        }
+
+        if (results.other_meetings) {
+            results.other_meetings.forEach(function(meeting) {
+                meetings.push(meeting);
+            });
+        }
+
+        completionHandler(err, meetings);
+    });
+}
+
 function retrieveMeetings(uid, reference, completionHandler) {
     // Get the original user data
+    // Get the additional information for user
     let refCollection = reference.collection('meetings');
     refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
         var users = new Array();

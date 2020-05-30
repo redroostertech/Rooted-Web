@@ -10,6 +10,7 @@ const _                                 = require('underscore');
 const mime                              = require('mime');
 const randomstring                      = require('randomstring');
 const async                             = require('async');
+const moment                            = require('moment');
 
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
@@ -329,6 +330,32 @@ function retrieveUserObject(uid, reference, completionHandler) {
                         }
                     });
                 }
+                // ,meetings: function(callback) {
+                //     var accountTypes = new Array();
+                //     let prefCollection = reference.collection('meetings');
+                //     prefCollection.where('owner_id','==', userDoc.uid).get(getOptions).then(function(querysnapshot) {
+                //         async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                //             var prefdata = d.data();
+                //             prefdata.key = d.id;
+
+                //             if (moment(prefdata.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
+                //             accountTypes.push(prefdata);
+                //             c();
+                //         }, function(_e) {
+                //             if (_e) { 
+                //                 console.log(_e.message);
+                //                 callback(_e, accountTypes);
+                //             } else {
+                //                 callback(null, accountTypes);
+                //             }
+                //         });
+                //     }).catch(function (error) {
+                //         if (error) {
+                //             console.log(error.message);
+                //             callback(error, null);
+                //         }
+                //     });
+                // }
             }, function(error, results) {
                 console.log(results);
                 console.log(error);
@@ -342,6 +369,10 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 if (results.account_type) {
                     userDoc.account_type = results.account_type
                 }
+
+                // if (results.meetings) {
+                //     userDoc.meetings = results.meetings
+                // }
 
                 users.push(userDoc);
                 completion();
