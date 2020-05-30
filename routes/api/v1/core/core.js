@@ -87,10 +87,10 @@ router.post('/eggman', function(req, res) {
         });
 
         let startDate = data.meeting_date.start_date;
-        data.meeting_date.start_date = moment(startDate);
+        data.meeting_date.start_date = moment(startDate).unix();
 
         let endDate = data.meeting_date.end_date;
-        data.meeting_date.end_date = moment(endDate);
+        data.meeting_date.end_date = moment(endDate).unix();
 
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
