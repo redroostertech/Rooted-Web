@@ -79,12 +79,6 @@ router.post('/eggman', function(req, res) {
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
-        let startDate = data.meeting_date.start_date;
-        data.meeting_date.start_date = moment(startDate).unix().utc();
-
-        let endDate = data.meeting_date.end_date;
-        data.meeting_date.end_date = moment(endDate).unix().utc();
-
         // let meetingObject = {
         //     dashboard_section_id: data.dashboard_section_id,
         //     id: data.id,
@@ -269,6 +263,12 @@ function retrieveMeetings(uid, reference, completionHandler) {
 
             console.log(moment(userDoc.meeting_date.end_date).format("dddd, MMMM Do YYYY, h:mm:ss a"));
 
+            let startDate = data.meeting_date.start_date;
+            data.meeting_date.start_date = moment(startDate).unix().utc();
+    
+            let endDate = data.meeting_date.end_date;
+            data.meeting_date.end_date = moment(endDate).unix().utc();
+            
             if (userDoc.meeting_date.end_date < moment().unix()) return completion();
 
             userDoc.key = doc.id;
