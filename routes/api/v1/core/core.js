@@ -12,6 +12,7 @@ const randomstring                      = require('randomstring');
 const jwt                               = require('jsonwebtoken');
 const rp                                = require('request-promise');
 const moment                            = require('moment');
+const async                             = require('async');
 
 var Zoom = require('zoomus')({
     key: 'z8O78FV9TtG8H9lIxqwR6w',
@@ -68,14 +69,6 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'save_meeting') {
-        // start_date
-        // end_date
-        // time_zone
-        // meeting_location
-        // meeting_type
-        // meeting_description
-        // agenda_items
-        // meeting_name
         let data = req.body.data;
         console.log(data);
 
@@ -92,9 +85,22 @@ router.post('/eggman', function(req, res) {
         let endDate = data.meeting_date.end_date;
         data.meeting_date.end_date = moment(endDate).unix();
 
+        let meetingObject = {
+            dashboard_section_id: data.dashboard_section_id,
+            id: data.id,
+            end_date: data.meeting_date.end_date,
+            start_date: data.meeting_date.start_date,
+            time_zone: data.time_zone,
+            meeting_description: data.meeting_description,
+            meeting_name: data.meeting_name,
+            meeting_type: data.meeting_type,
+            owner_id: data.owner_id,
+            createdAt: moment().unix(),
+        }
+        
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
-            refCollection.add(data).then(function(docRef) {
+            refCollection.add(meetingObject).then(function(docRef) {
                 console.log("Document written with ID: ", docRef.id);
                 data.key = docRef.id;
                 res.status(200).json({
@@ -255,13 +261,18 @@ function getFirebaseFirStorageInstance(res, callback) {
 function retrieveMeetings(uid, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection('meetings');
-    refCollection.where('owner_id','==', uid).where('meeting_date.end_date', '>=', new Date()).get(getOptions).then(function(querySnapshot) {
+    refCollection.where('owner_id','==', uid).where('meeting_date.end_date', '>=', Number(moment().unix())).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
             userDoc.key = doc.id;
             
+            userDoc.meeting_date = {
+                end_date: userDoc.meeting_end_date,
+                start_date: userDoc.meeting_end_date
+            }
+
             // Get the additional information for user
             //  Preferences
             //  Account Type
