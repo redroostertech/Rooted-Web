@@ -80,10 +80,10 @@ router.post('/eggman', function(req, res) {
         });
 
         let startDate = data.meeting_date.start_date;
-        data.meeting_date.start_date = moment(startDate).unix();
+        data.meeting_date.start_date = moment(startDate).unix().utc();
 
         let endDate = data.meeting_date.end_date;
-        data.meeting_date.end_date = moment(endDate).unix();
+        data.meeting_date.end_date = moment(endDate).unix().utc();
 
         // let meetingObject = {
         //     dashboard_section_id: data.dashboard_section_id,
@@ -267,7 +267,9 @@ function retrieveMeetings(uid, reference, completionHandler) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
 
-            if (userDoc.meeting_date.end_date < moment(startDate).unix()) return completion();
+            console.log(moment(userDoc.meeting_date.end_date).format("dddd, MMMM Do YYYY, h:mm:ss a"));
+
+            if (userDoc.meeting_date.end_date < moment().unix()) return completion();
 
             userDoc.key = doc.id;
             
