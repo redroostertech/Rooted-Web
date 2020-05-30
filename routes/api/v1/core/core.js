@@ -67,9 +67,9 @@ router.post('/eggman', function(req, res) {
         // meeting_description
         // agenda_items
         // meeting_name
-        let data = JSON.parse(req.body.data);
+        let data = req.body.data;
         console.log(data);
-        
+
         if (!data.start_date || !data.end_date || !data.meeting_name || !data.owner) return res.status(200).json({
             "status": 200,
             "success": false,
