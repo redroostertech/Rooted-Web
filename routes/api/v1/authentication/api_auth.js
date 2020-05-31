@@ -139,7 +139,7 @@ router.post('/leo', function(req, res) {
             "error_message": "Email or password are invalid. Please try again."
         });
 
-        getFirebaseAuthInstance(res, function(auth){ 
+        getFirebaseAuthInstance(res, function(auth) { 
             auth.signInWithEmailAndPassword(email, password).then(function(error) {
                 let currentUser = auth.currentUser;
                 getFirebaseFirStorageInstance(res, function(reference) {
@@ -150,6 +150,8 @@ router.post('/leo', function(req, res) {
                             "data": null,
                             "error_message": error.message
                         });
+
+                        data.user[0].email_address = currentUser.email;
 
                         res.status(200).json({
                             "status": 200,
@@ -188,10 +190,54 @@ router.post('/leo', function(req, res) {
                     "data": {
                         "email_sent": true
                     },
-                    "error_message": error.message
+                    "error_message": null
                 });
             }).catch(function(error) {
-                // An error happened.
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": null,
+                    "error_message": error.message
+                });
+            });
+        });
+    }
+
+    if (action == 'log_out') {
+        let uid = req.body.uid;
+
+        if (!uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        getFirebaseAuthInstance(res, function(auth) { 
+            if (uid !== auth.currentUser.uid) return res.status(200).json({
+                "status": 200,
+                "success": false,
+                "data": null,
+                "error_message": "Something went wrong. Please try again."
+            });
+
+            auth.signOut().then(function() {
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": {
+                        "userId": auth.currentUser.uid,
+                        "logout": true
+                    },
+                    "error_message": null
+                });
+              }).catch(function(error) {
+                res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
             });
         });
     }
