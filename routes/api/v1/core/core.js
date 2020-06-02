@@ -78,6 +78,17 @@ router.post('/eggman', function(req, res) {
             "data": null,
             "error_message": "1 or more parameters are missing. Please try again."
         });
+
+        var agendaItems = data.agenda_items;
+        var newAgendaItems = new Array();
+        agendaItems.forEach(function(agendaItem) {
+            var item = {
+                item_name: agendaItem.item_name,
+                order: agendaItem.order
+            }
+        });
+        
+        data.agendaItems = newAgendaItems;
         
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
@@ -139,6 +150,36 @@ router.post('/eggman', function(req, res) {
 
         getFirebaseFirStorageInstance(res, function(reference) {
             retrieveMeetings(req.body.uid, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+
+    if (action == 'accept_meeting') {
+        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            let data = {
+                'meeting_participants_ids': user_id
+            }
+            updateMeetingForId(data, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -592,6 +633,25 @@ function retrieveMeetingsById(id, reference, completionHandler) {
                 "meetings": users
             }
             completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function updateMeetingForId(data, id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection('meetings');
+    refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            refCollection.doc(doc.id).set(data, { merge: true }).then(function() {
+                completion();
+            }).catch(function (error) {
+                completionHandler(error, null);
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            retrieveMeetingsById(id, reference, completionHandler);
         });
     }).catch(function (error) {
         completionHandler(error, null);

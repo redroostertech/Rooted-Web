@@ -226,7 +226,7 @@ router.post('/leo', function(req, res) {
                     "status": 200,
                     "success": true,
                     "data": {
-                        "userId": auth.currentUser.uid,
+                        "userId": uid,
                         "logout": true
                     },
                     "error_message": null
