@@ -375,33 +375,21 @@ function retrieveUserObject(uid, reference, completionHandler) {
                             callback(error, null);
                         }
                     });
+                }, 
+                meetings: function(callback) {
+                    var accountTypes = new Array();
+                    retrieveMeetings(userDoc.uid, reference, function(error, data) {
+                        if (error) { 
+                            console.log(error.message);
+                            callback(error, accountTypes);
+                        } else {
+                            data.meetings.forEach(function(meeting){
+                                accountTypes.push(meeting);
+                            });
+                            callback(null, accountTypes);
+                        }
+                    });
                 }
-                // ,meetings: function(callback) {
-                //     var accountTypes = new Array();
-                //     let prefCollection = reference.collection('meetings');
-                //     prefCollection.where('owner_id','==', userDoc.uid).get(getOptions).then(function(querysnapshot) {
-                //         async.forEachOf(querysnapshot.docs, function(d, k, c) {
-                //             var prefdata = d.data();
-                //             prefdata.key = d.id;
-
-                //             if (moment(prefdata.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
-                //             accountTypes.push(prefdata);
-                //             c();
-                //         }, function(_e) {
-                //             if (_e) { 
-                //                 console.log(_e.message);
-                //                 callback(_e, accountTypes);
-                //             } else {
-                //                 callback(null, accountTypes);
-                //             }
-                //         });
-                //     }).catch(function (error) {
-                //         if (error) {
-                //             console.log(error.message);
-                //             callback(error, null);
-                //         }
-                //     });
-                // }
             }, function(error, results) {
                 console.log(results);
                 console.log(error);
@@ -416,9 +404,9 @@ function retrieveUserObject(uid, reference, completionHandler) {
                     userDoc.account_type = results.account_type
                 }
 
-                // if (results.meetings) {
-                //     userDoc.meetings = results.meetings
-                // }
+                if (results.meetings) {
+                    userDoc.meetings = results.meetings
+                }
 
                 users.push(userDoc);
                 completion();
@@ -428,6 +416,72 @@ function retrieveUserObject(uid, reference, completionHandler) {
             let data = {
                 "uid": uid,
                 "user": users
+            }
+            completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function retrieveMeetings(uid, reference, completionHandler) {
+    // Get the original user data
+    // Get the additional information for user
+    let refCollection = reference.collection('meetings');
+    refCollection.where('owner_id','==', uid).limit(3).get(getOptions).then(function(querySnapshot) {
+        var users = new Array();
+
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
+
+            console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
+            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
+
+            userDoc.key = doc.id;
+
+            // Get the additional information for user
+            async.parallel({
+                owner: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.owner) {
+                    userDoc.owner = results.owner
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "meetings": users
             }
             completionHandler(err, data);
         });

@@ -86,10 +86,11 @@ router.post('/eggman', function(req, res) {
                 item_name: agendaItem.item_name,
                 order: agendaItem.order
             }
+            newAgendaItems.push(item);
         });
         
-        data.agendaItems = newAgendaItems;
-        
+        data.agenda_items = newAgendaItems;
+
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
             refCollection.add(data).then(function(docRef) {
