@@ -11,6 +11,13 @@ const mime                              = require('mime');
 const randomstring                      = require('randomstring');
 const async                             = require('async');
 const moment                            = require('moment');
+const jwt                               = require('jsonwebtoken');
+
+var oneDay = process.env.oneDay || configs.oneDay;
+var jwtsecret = process.env.jwtsecret || configs.jwtsecret;
+var jwtsecretLimit = process.env.jwtsecretLimit || configs.jwtsecretLimit;
+var jwtrefresh = process.env.jwtrefresh || configs.jwtrefresh;
+var jwtrefreshLimit = process.env.jwtrefreshLimit || configs.jwtrefreshLimit;
 
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
@@ -37,6 +44,7 @@ router.post('/leo', function(req, res) {
 
         getFirebaseAuthInstance(res, function(auth){ 
             auth.signOut().then(function() {
+                
                 auth.createUserWithEmailAndPassword(email, password).then(function () {
                     if (!auth.currentUser) return res.status(200).json({
                         "status": 200,
@@ -47,74 +55,89 @@ router.post('/leo', function(req, res) {
 
                     const uid = auth.currentUser.uid;
 
-                    // Create user
-                    var userObject = {
-                        id: randomstring.generate(25),
-                        uid: uid,
-                        createdAt: new Date(),
-                        lastLogin: new Date(),
-                        first_name: null,
-                        full_name: full_name,
-                        last_name: null,
-                        preferred_currency: 'USD',
-                        initial_setup : false,
-                        account_type_id: 10,
-                        maximum_events: 3,
-                        address_line_1 : null,
-                        address_line_2 : null,
-                        address_line_3 : null,
-                        address_line_4 : null,
-                        address_city : null,
-                        address_state : null,
-                        address_zip_code : null,
-                        address_long : null,
-                        address_lat : null,
-                        address_country: null,
-                        address_description: null,
-                        bio: null,
-                        job_title: null,
-                        company_name: null,
-                        phone_number_country_code: null,
-                        phone_number_area_code: null,
-                        phone_number_string: phone_number_string,
-                        gender: null,
-                        dob: null,
-                        user_preferences: [0, 1, 2, 3],
-                        card_on_file: false,
-                        payment_info_id: new Array(),
-                        last_known_checkin_ids: new Array(),
-                    }
+                    jwt.sign({ 
+                        uid: uid 
+                    }, 
+                    jwtrefresh, 
+                    {
+                        expiresIn: jwtrefreshLimit
+                    }, function(err, customToken) {
+                        if (err) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": err.message
+                        });
+                        // Create user
+                        var userObject = {
+                            id: randomstring.generate(25),
+                            uid: uid,
+                            token: customToken,
+                            createdAt: new Date(),
+                            lastLogin: new Date(),
+                            first_name: null,
+                            full_name: full_name,
+                            last_name: null,
+                            preferred_currency: 'USD',
+                            initial_setup : false,
+                            account_type_id: 10,
+                            maximum_events: 3,
+                            address_line_1 : null,
+                            address_line_2 : null,
+                            address_line_3 : null,
+                            address_line_4 : null,
+                            address_city : null,
+                            address_state : null,
+                            address_zip_code : null,
+                            address_long : null,
+                            address_lat : null,
+                            address_country: null,
+                            address_description: null,
+                            bio: null,
+                            job_title: null,
+                            company_name: null,
+                            phone_number_country_code: null,
+                            phone_number_area_code: null,
+                            phone_number_string: phone_number_string,
+                            gender: null,
+                            dob: null,
+                            user_preferences: [0, 1, 2, 3],
+                            card_on_file: false,
+                            payment_info_id: new Array(),
+                            last_known_checkin_ids: new Array(),
+                        }
 
-                    getFirebaseFirStorageInstance(res, function(reference) {
-                        let refCollection = reference.collection('users');
-                        refCollection.add(userObject).then(function(docRef) {
-                            console.log("Document written with ID: ", docRef.id);
-                            retrieveUserObject(auth.currentUser.uid, reference, function(error, data) {
-                                if (error) return res.status(200).json({
+                        getFirebaseFirStorageInstance(res, function(reference) {
+                            let refCollection = reference.collection('users');
+                            refCollection.add(userObject).then(function(docRef) {
+                                console.log("Document written with ID: ", docRef.id);
+                                retrieveUserObject(auth.currentUser.uid, reference, function(error, data) {
+                                    if (error) return res.status(200).json({
+                                        "status": 200,
+                                        "success": false,
+                                        "data": null,
+                                        "error_message": error.message
+                                    });
+            
+                                    res.status(200).json({
+                                        "status": 200,
+                                        "success": true,
+                                        "data": data,
+                                        "error_message": null
+                                    });
+                                });
+                            }).catch(function (error) {
+                                // arrayOfErrors.push(error.message);
+                                res.status(200).json({
                                     "status": 200,
                                     "success": false,
                                     "data": null,
                                     "error_message": error.message
                                 });
-        
-                                res.status(200).json({
-                                    "status": 200,
-                                    "success": true,
-                                    "data": data,
-                                    "error_message": null
-                                });
-                            });
-                        }).catch(function (error) {
-                            // arrayOfErrors.push(error.message);
-                            res.status(200).json({
-                                "status": 200,
-                                "success": false,
-                                "data": null,
-                                "error_message": error.message
                             });
                         });
-                    });
 
+                    })
                 }).catch(function (error) {
                     res.status(200).json({
                         "status": 200,
@@ -142,25 +165,40 @@ router.post('/leo', function(req, res) {
         getFirebaseAuthInstance(res, function(auth) { 
             auth.signInWithEmailAndPassword(email, password).then(function(error) {
                 let currentUser = auth.currentUser;
-                getFirebaseFirStorageInstance(res, function(reference) {
-                    retrieveUserObject(currentUser.uid, reference, function(error, data) {
-                        if (error) return res.status(200).json({
-                            "status": 200,
-                            "success": false,
-                            "data": null,
-                            "error_message": error.message
-                        });
-
-                        data.user[0].email_address = currentUser.email;
-
-                        res.status(200).json({
-                            "status": 200,
-                            "success": true,
-                            "data": data,
-                            "error_message": null
+                jwt.sign({ 
+                    uid: currentUser.uid 
+                }, 
+                jwtrefresh, 
+                {
+                    expiresIn: jwtrefreshLimit
+                }, function(err, customToken) {
+                    if (err) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": err.message
+                    });
+                    getFirebaseFirStorageInstance(res, function(reference) {
+                        retrieveUserObject(currentUser.uid, reference, function(error, data) {
+                            if (error) return res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
+                            });
+    
+                            data.user[0].email_address = currentUser.email;
+                            data.user[0].token = customToken;
+                            
+                            res.status(200).json({
+                                "status": 200,
+                                "success": true,
+                                "data": data,
+                                "error_message": null
+                            });
                         });
                     });
-                });
+                })
             }).catch(function (error) {
                 res.status(200).json({
                     "status": 200,
@@ -169,6 +207,68 @@ router.post('/leo', function(req, res) {
                     "error_message": error.message
                 });
             });
+        });
+    }
+
+    if (action == 'session_check') {
+
+        let token = req.body.token;
+        let email = req.body.email;
+
+        if (!token || !email) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please login again."
+        });
+
+        jwt.verify(token, jwtrefresh, (err, decoded) => {
+            if (err) {
+              return res.status(200).json({
+                "status": 200,
+                "success": false,
+                "data": null,
+                "error": err.message,
+              });
+            } else {
+                getFirebaseFirStorageInstance(res, function(reference) {
+                    retrieveUserObject(decoded.uid, reference, function(error, data) {
+                        if (error) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+
+                        jwt.sign({ 
+                            uid: decoded.uid 
+                        }, 
+                        jwtrefresh, 
+                        {
+                            expiresIn: jwtrefreshLimit
+                        }, function(err, customToken) {
+                            if (err) return res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": err.message
+                            });
+
+                            data.user[0].email_address = email;
+                            data.user[0].token = customToken;
+                            
+                            res.status(200).json({
+                                "status": 200,
+                                "success": true,
+                                "data": data,
+                                "error_message": null
+                            });
+
+                        });
+                        
+                    });
+                })
+            }
         });
     }
 
