@@ -70,6 +70,7 @@ router.post('/eggman', function(req, res) {
 
     if (action == 'save_meeting') {
         let data = req.body.data;
+        console.log('Request Body Data\n');
         console.log(data);
 
         if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.owner_id) return res.status(200).json({
@@ -80,6 +81,10 @@ router.post('/eggman', function(req, res) {
         });
 
         var agendaItems = data.agenda_items;
+
+        console.log('\n\nAgenda Items\n');
+        console.log(agendaItems);
+
         var newAgendaItems = new Array();
         agendaItems.forEach(function(agendaItem) {
             var item = {
@@ -88,8 +93,15 @@ router.post('/eggman', function(req, res) {
             }
             newAgendaItems.push(item);
         });
+
+        console.log('\n\nNew Agenda Items\n');
+        console.log(newAgendaItems);
         
         data.agenda_items = newAgendaItems;
+        data.meeting_participants_ids = [data.owner_id];
+
+        console.log('\n\nFinished Data\n');
+        console.log(data);
 
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('meetings');
@@ -253,7 +265,12 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action =='createMeeting') {
+    if (action == 'create_workspace') { 
+
+    }
+
+    // MARK: - ZOOM
+    if (action == 'createMeeting') {
         email = req.body.email;
         var options = {
             method: "POST",
@@ -285,7 +302,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action =='createUser') {
+    if (action == 'createUser') {
         email = req.body.email;
         var options = {
             method: "POST",
@@ -318,6 +335,50 @@ router.post('/eggman', function(req, res) {
         });
     }
 }); 
+
+function createMeeting(data, callback) {
+    if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.owner_id) return res.status(200).json({
+        "status": 200,
+        "success": false,
+        "data": null,
+        "error_message": "1 or more parameters are missing. Please try again."
+    });
+
+    var agendaItems = data.agenda_items;
+    var newAgendaItems = new Array();
+    agendaItems.forEach(function(agendaItem) {
+        var item = {
+            item_name: agendaItem.item_name,
+            order: agendaItem.order
+        }
+        newAgendaItems.push(item);
+    });
+    
+    data.agenda_items = newAgendaItems;
+    data.meeting_participants_ids = [data.owner_id];
+
+    getFirebaseFirStorageInstance(res, function(reference) {
+        let refCollection = reference.collection('meetings');
+        refCollection.add(data).then(function(docRef) {
+            console.log("Document written with ID: ", docRef.id);
+            data.key = docRef.id;
+            res.status(200).json({
+                "status": 200,
+                "success": true,
+                "data": data,
+                "error_message": null
+            });
+        }).catch(function (error) {
+            // arrayOfErrors.push(error.message);
+            res.status(200).json({
+                "status": 200,
+                "success": false,
+                "data": null,
+                "error_message": error.message
+            });
+        });
+    });
+}
 
 function getFirebaseAuthInstance(res, callback) {
     main.firebase(function(firebase) {
