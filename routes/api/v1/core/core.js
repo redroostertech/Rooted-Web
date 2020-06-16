@@ -83,10 +83,10 @@ router.post('/eggman', function(req, res) {
         var agendaItems = data.agenda_items;
 
         console.log('\n\nAgenda Items\n');
-        console.log(agendaItems);
 
         var newAgendaItems = new Array();
         agendaItems.forEach(function(agendaItem) {
+            console.log(agendaItem);
             var item = {
                 item_name: agendaItem.item_name,
                 order: agendaItem.order
