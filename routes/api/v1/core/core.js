@@ -591,22 +591,29 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
     }, function(err, results) {
         if (err) return completionHandler(err, null);
 
+        var meetingIds = new Array();
         var meetings = new Array();
 
         if (results.my_meetings) {
             results.my_meetings.forEach(function(meeting) {
-                meetings.push(meeting);
+                if (!meetingIds.includes(meeting.id)) {
+                    meetings.push(meeting);
+                    meetingIds.push(meeting.id);
+                }
             });
         }
 
         if (results.other_meetings) {
             results.other_meetings.forEach(function(meeting) {
-                meetings.push(meeting);
+                if (!meetingIds.includes(meeting.id)) {
+                    meetings.push(meeting);
+                    meetingIds.push(meeting.id);
+                }
             });
         }
 
         let data = {
-            "meetings": _.uniq(meetings)
+            "meetings": meetings
         }
 
         completionHandler(err, data);
