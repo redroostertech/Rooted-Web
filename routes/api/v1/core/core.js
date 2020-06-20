@@ -83,21 +83,33 @@ router.post('/eggman', function(req, res) {
         var agendaItems = data.agenda_items;
 
         console.log('\n\nAgenda Items\n');
+        if (agendaItems.length > 0) {
 
-        var newAgendaItems = new Array();
-        agendaItems.forEach(function(agendaItem) {
-            console.log(agendaItem);
-            var item = {
-                item_name: agendaItem.item_name,
-                order: agendaItem.order
+            var agendaItemObject = agendaItems[0];
+            
+            var agendaItemOrder = agendaItemObject.order;
+            var agendaItemName = agendaItemObject.item_name;
+
+            if (agendaItemOrder.length > 0 && agendaItemName.length > 0) {
+                var i = 0;
+                var newAgendaItems = new Array();
+
+                while (i < agendaItemOrder.length) {
+                    var item = {
+                        item_name: agendaItemName[i],
+                        order: agendaItemOrder[i]
+                    }
+                    newAgendaItems.push(item);
+                    i++;
+                }
+
+                console.log('\n\nNew Agenda Items\n');
+                console.log(newAgendaItems);
+                
+                data.new_agenda_items = newAgendaItems;
             }
-            newAgendaItems.push(item);
-        });
-
-        console.log('\n\nNew Agenda Items\n');
-        console.log(newAgendaItems);
+        }
         
-        data.agenda_items = newAgendaItems;
         data.meeting_participants_ids = [data.owner_id];
 
         console.log('\n\nFinished Data\n');
