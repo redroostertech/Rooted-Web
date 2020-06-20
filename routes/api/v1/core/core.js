@@ -606,7 +606,7 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
         }
 
         let data = {
-            "meetings": meetings
+            "meetings": _.uniq(meetings)
         }
 
         completionHandler(err, data);
