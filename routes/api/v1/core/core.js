@@ -106,7 +106,7 @@ router.post('/eggman', function(req, res) {
                 console.log('\n\nNew Agenda Items\n');
                 console.log(newAgendaItems);
                 
-                data.new_agenda_items = newAgendaItems;
+                data.agenda_items = newAgendaItems;
             }
         }
         
