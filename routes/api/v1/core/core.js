@@ -83,7 +83,7 @@ router.post('/eggman', function(req, res) {
         var agendaItems = data.agenda_items;
 
         console.log('\n\nAgenda Items\n');
-        if (agendaItems.length > 0) {
+        if (agendaItems && agendaItems.length > 0) {
 
             var agendaItemObject = agendaItems[0];
             
