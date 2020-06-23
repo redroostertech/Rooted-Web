@@ -71,6 +71,7 @@ router.post('/leo', function(req, res) {
                         // Create user
                         var userObject = {
                             id: randomstring.generate(25),
+                            email_address: email,
                             uid: uid,
                             token: customToken,
                             createdAt: new Date(),
