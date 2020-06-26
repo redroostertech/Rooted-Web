@@ -229,10 +229,34 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            let data = {
-                'meeting_participants_ids': req.body.user_id
-            }
-            updateMeetingForId(data, req.body.meeting_id, reference, function(error, data) {
+            updateMeetingForId(req.body.user_id, req.body.meeting_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+
+    if (action == 'decline_meeting') {
+        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            removeParticipantForMeeting(req.body.user_id, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -742,7 +766,7 @@ function retrieveMeetings(uid, reference, completionHandler) {
                     });
                 },
                 activity: function(callback) {
-
+                    callback();
                 }
             }, function(error, results) {
                 console.log(results);
@@ -835,7 +859,37 @@ function updateMeetingForId(data, id, reference, completionHandler) {
     let refCollection = reference.collection('meetings');
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
-            refCollection.doc(doc.id).set(data, { merge: true }).then(function() {
+            var meetingParticipantsId = doc.data().meeting_participants_ids;
+            meetingParticipantsId.push(data);
+            let object = {
+                'meeting_participants_ids': meetingParticipantsId
+            }
+            refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
+                completion();
+            }).catch(function (error) {
+                completionHandler(error, null);
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            retrieveMeetingsById(id, reference, completionHandler);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function removeParticipantForMeeting(data, id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection('meetings');
+    refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var meetingParticipantsId = doc.data().meeting_participants_ids.filter(function(participantId) {
+                return participantId !== data
+            });
+            let object = {
+                'meeting_participants_ids': meetingParticipantsId
+            }
+            refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
                 completion();
             }).catch(function (error) {
                 completionHandler(error, null);
