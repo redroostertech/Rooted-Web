@@ -111,6 +111,7 @@ router.post('/eggman', function(req, res) {
         }
         
         data.meeting_participants_ids = [data.owner_id];
+        data.createdAt = new Date();
 
         console.log('\n\nFinished Data\n');
         console.log(data);
@@ -229,7 +230,7 @@ router.post('/eggman', function(req, res) {
 
         getFirebaseFirStorageInstance(res, function(reference) {
             let data = {
-                'meeting_participants_ids': user_id
+                'meeting_participants_ids': req.body.user_id
             }
             updateMeetingForId(data, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
@@ -308,6 +309,83 @@ router.post('/eggman', function(req, res) {
 
     }
 
+    if (action == 'send_activity') {
+        let data = req.body.data;
+
+        if (!data.sender_id || !data.object_id || !data.activity_type) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        switch (data.activity_type) {
+            case 0:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant accepted meeting'
+            case 1:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant declined meeting'
+            case 1:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant is tentative'
+        }
+
+        data.createdAt = new Date();
+        
+        getFirebaseFirStorageInstance(res, function(reference) {
+            let refCollection = reference.collection('activity');
+            refCollection.add(data).then(function(docRef) {
+                console.log("Document written with ID: ", docRef.id);
+                data.key = docRef.id;
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            }).catch(function (error) {
+                // arrayOfErrors.push(error.message);
+                res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+            });
+        });
+    }
+
+    if (action == 'get_activity_for_object') {
+        let data = req.body.data;
+
+        if (!data.object_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveActivityForId(req.body.object_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+        
+    }
+
     // MARK: - ZOOM
     if (action == 'createMeeting') {
         email = req.body.email;
@@ -373,6 +451,8 @@ router.post('/eggman', function(req, res) {
             console.log("API call failed, reason ", err);
         });
     }
+
+    // MARK: - MailJet
 }); 
 
 function createMeeting(data, callback) {
@@ -660,6 +740,9 @@ function retrieveMeetings(uid, reference, completionHandler) {
                             callback(error, null);
                         }
                     });
+                },
+                activity: function(callback) {
+
                 }
             }, function(error, results) {
                 console.log(results);
@@ -760,6 +843,67 @@ function updateMeetingForId(data, id, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             retrieveMeetingsById(id, reference, completionHandler);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function retrieveActivityForId(id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection('activity');
+    refCollection.where('object_id', '==', id).get(getOptions).then(function(querySnapshot) {
+        var users = new Array();
+
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
+            userDoc.key = doc.id;
+
+            // Get the additional information for user
+            async.parallel({
+                owner: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('uid','==', userDoc.sender_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.owner) {
+                    userDoc.owner = results.owner
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "activity": users
+            }
+            completionHandler(err, data);
         });
     }).catch(function (error) {
         completionHandler(error, null);
