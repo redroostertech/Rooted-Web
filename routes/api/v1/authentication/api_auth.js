@@ -71,6 +71,7 @@ router.post('/leo', function(req, res) {
                         // Create user
                         var userObject = {
                             id: randomstring.generate(25),
+                            email_address: email,
                             uid: uid,
                             token: customToken,
                             createdAt: new Date(),
@@ -283,7 +284,7 @@ router.post('/leo', function(req, res) {
         });
 
         getFirebaseAuthInstance(res, function(auth) { 
-            auth.sendPasswordResetEmail(emailAddress).then(function() {
+            auth.sendPasswordResetEmail(email).then(function() {
                 res.status(200).json({
                     "status": 200,
                     "success": true,
