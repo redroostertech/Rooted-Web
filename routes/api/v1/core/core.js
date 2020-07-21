@@ -333,7 +333,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'cancel_meeting') {
-        if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
+        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -358,27 +358,27 @@ router.post('/eggman', function(req, res) {
                     "error_message": "A meeting was not found for provided id. Please try again."
                 });
 
-                if (meeting.owner_id !== req.body.owner_id) return res.status(200).json({
+                if (meeting.user_id !== req.body.owner_id) return res.status(200).json({
                     "status": 200,
                     "success": false,
                     "data": null,
                     "error_message": "You do not have the permission to delete this meeting."
                 });
 
-                reference.collection('meetings').doc(meeting.key).delete().then(function() {
+                meeting['meeting_status_id'] = 1;
+                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
                     res.status(200).json({
                         "status": 200,
                         "success": true,
                         "data": {
-                            "message": "Meeting was deleted.",
-                            "deleted_message": data
+                            "meeting_id": req.body.meeting_id
                         },
-                        "error_message": null
+                        "error_message": null 
                     });
-                }).catch(function(error) {
+                }).catch(function (error) {
                     res.status(200).json({
                         "status": 200,
-                        "success": true,
+                        "success": false,
                         "data": null,
                         "error_message": error.message
                     });

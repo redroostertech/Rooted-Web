@@ -484,7 +484,8 @@ function retrieveUserObject(uid, reference, completionHandler) {
                             console.log(error.message);
                             callback(error, accountTypes);
                         } else {
-                            data.meetings.forEach(function(meeting){
+                            data.meetings.forEach(function(meeting) {
+                                console.log("Meeting added")
                                 accountTypes.push(meeting);
                             });
                             callback(null, accountTypes);
