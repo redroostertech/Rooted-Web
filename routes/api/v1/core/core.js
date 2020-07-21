@@ -274,7 +274,65 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'delete_meeting') {
+    if (action == 'update_meeting') {
+        if (!req.body.meeting_id || !req.body.user_id || !req.body.data) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById(req.body.meeting_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                if (meeting.user_id !== req.body.owner_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You do not have the permission to delete this meeting."
+                });
+
+                let updateData = JSON.parse(req.body.data);
+                Object.keys(updateData).forEach(function(key) {
+                    meeting[key] = updateData[key];
+                });
+                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "meeting_id": req.body.meeting_id
+                        },
+                        "error_message": null 
+                    });
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
+    if (action == 'cancel_meeting') {
         if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -1016,6 +1074,28 @@ function updateMeetingForId(data, id, reference, completionHandler) {
             meetingParticipantsId.push(data);
             let object = {
                 'meeting_participants_ids': meetingParticipantsId
+            }
+            refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
+                completion();
+            }).catch(function (error) {
+                completionHandler(error, null);
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            retrieveMeetingsById(id, reference, completionHandler);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function updateStatusForMeetingForId(data, id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection('meetings');
+    refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            let object = {
+                'meeting_status_id': data
             }
             refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
                 completion();
