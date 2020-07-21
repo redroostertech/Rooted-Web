@@ -537,6 +537,14 @@ router.post('/eggman', function(req, res) {
     }
 
     // MARK: - MailJet
+
+    return res.status(200).json({
+        "status": 200,
+        "success": false,
+        "data": null,
+        "error_message": "Something went wrong. Please try again."
+    });
+
 }); 
 
 function createMeeting(data, callback) {
