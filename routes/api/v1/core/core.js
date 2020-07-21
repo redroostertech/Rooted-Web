@@ -389,6 +389,61 @@ router.post('/eggman', function(req, res) {
         });
     }
 
+    if (action == 'delete_meeting') {
+        if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById(req.body.meeting_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                if (meeting.owner_id !== req.body.owner_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You do not have the permission to delete this meeting."
+                });
+
+                reference.collection('meetings').doc(meeting.key).delete().then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "message": "Meeting was deleted.",
+                            "deleted_message": data
+                        },
+                        "error_message": null
+                    });
+                }).catch(function(error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
     if (action == 'create_workspace') { 
 
     }
