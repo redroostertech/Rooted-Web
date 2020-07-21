@@ -308,6 +308,8 @@ router.post('/eggman', function(req, res) {
                 });
 
                 let updateData = JSON.parse(req.body.data);
+                console.log("Update data");
+                console.log(updateData);
                 Object.keys(updateData).forEach(function(key) {
                     meeting[key] = updateData[key];
                 });
