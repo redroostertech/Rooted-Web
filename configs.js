@@ -29,15 +29,15 @@ const session_cookie_secret = 'r3498thw8ote89gd45oihiur5bgodr789';
 const session_duration = 60 * 60 * 1000;
 const session_active_duration = 5 * 60 * 1000;
 
-const fir_api_key = 'AIzaSyDOopMpxlFi-7oVFMw_xbj8da9jLFY7qxQ';
-const fir_auth_domain = 'rooted-f677e.firebaseapp.com'; // 'dadhive-cc6f5.firebaseapp.com';
-const fir_db_url = 'https://rooted-f677e.firebaseio.com';
-const fir_project_id = 'rooted-f677e';
-const fir_storage_bucket = 'rooted-f677e.appspot.com';
-const fir_messaging_sender_id = '837225967709';
-const fir_storage_filename = './rooted-f677e-7249c753c9f9.json';
-const fir_app_id = '1:837225967709:web:732f1795cc32a066e1ddb4';
-const fir_measurement_id = 'G-9JL08DX2B9';
+const fir_api_key = 'AIzaSyC8-wum1nrL4NkL4GHJJmhfBcpQyG1ZDIA';
+const fir_auth_domain = 'rooted-test.firebaseapp.com';
+const fir_db_url = 'https://rooted-test.firebaseio.com';
+const fir_project_id = 'rooted-test';
+const fir_storage_bucket = 'rooted-test.appspot.com';
+const fir_messaging_sender_id = '316478127099';
+const fir_storage_filename = './rooted-test-7d1b0827d760.json';
+const fir_app_id = '1:316478127099:web:61ce489a39d6fdad02a95e';
+const fir_measurement_id = 'G-BGB70ZYWQV';
 
 const s3_access_key = '';
 const s3_secret_key = '';
