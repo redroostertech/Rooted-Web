@@ -39,6 +39,13 @@ const fir_storage_filename = './rooted-test-7d1b0827d760.json';
 const fir_app_id = '1:316478127099:web:61ce489a39d6fdad02a95e';
 const fir_measurement_id = 'G-BGB70ZYWQV';
 
+const twilio_account_sid = 'AC5d98b26a8dbeedc6246fbed6d6fcd5dc';
+const twilio_auth_token = '51c7554d0b8334a906cc844d8fdb9772';
+const twilio_authy_api = '';
+
+const zoom_key = 'z8O78FV9TtG8H9lIxqwR6w';
+const zoom_secret = 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF';
+
 const s3_access_key = '';
 const s3_secret_key = '';
 const s3_bucket = '';
@@ -88,6 +95,13 @@ module.exports = {
     firstoragefilename: fir_storage_filename,
     firappid: fir_app_id,
     firmeasurementid: fir_measurement_id,
+
+    twilioAccountSid: twilio_account_sid,
+    twilioAccountAuthToken: twilio_auth_token,
+    twilioAuthyApi: twilio_authy_api,
+
+    zoomKey: zoom_key,
+    zoomSecret: zoom_secret,
     
     s3AccessKey: s3_access_key,
     s3SecretKey: s3_secret_key,

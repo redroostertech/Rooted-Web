@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <% include templates/head %> 
+    <link href="../admin/assets/css/main.css" rel="stylesheet" type="text/css" />
+    <!-- END GLOBAL MANDATORY STYLES -->
+
+    <!-- BEGIN PAGE LEVEL PLUGINS/CUSTOM STYLES -->
+    <link href="../admin/assets/css/scrollspyNav.css" rel="stylesheet" type="text/css" />
+    <link href="../admin/assets/css/components/custom-modal.css" rel="stylesheet" type="text/css">
+    <link rel="stylesheet" type="text/css" href="../admin/plugins/animate/animate.css">
+    <link href="../admin/assets/css/pages/faq/faq.css" rel="stylesheet" type="text/css" /> 
+    <!-- END PAGE LEVEL PLUGINS/CUSTOM STYLES --> 
+    
+    <style>   
+        .blockui-growl-message {
+            display: none;
+            text-align: left;
+            padding: 15px;
+            background-color: #455a64;
+            color: #fff;
+            border-radius: 3px;
+        }
+        .blockui-animation-container { display: none; }
+        .multiMessageBlockUi {
+            display: none;
+            background-color: #455a64;
+            color: #fff;
+            border-radius: 3px;
+            padding: 15px 15px 10px 15px;
+        }
+        .multiMessageBlockUi i { display: block }
+    </style>
+</head>
+<body class="sidebar-noneoverflow">
+
+    <div class="fq-header-wrapper">
+        <nav class="navbar navbar-expand">
+            <div class="container">
+                <a class="navbar-brand" href="/">ROOTED INVITATION: <%= page.data.meetings[0].meeting_name %></a>
+                <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+
+                <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                    <ul class="navbar-nav ml-auto">
+                        <% if (!page.isSessionActive) { %>
+                        <li class="nav-item">
+                            <b>Are you attending?</b>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">Yes, add to my calendar!</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#">No</a>
+                        </li>
+                        <% } else { %> 
+                            <li class="nav-item">
+                                <a id="modal-blockui" class="nav-link" data-toggle="modal" data-target="#exampleModal">Login</a>
+                            </li>
+                        <% } %>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+        <div class="container">
+            <div class="row">
+                <div class="col-md-6 align-self-center order-md-0 order-1">
+                    <h1 class=""><%= page.data.meetings[0].meeting_name %></h1>
+                    <p class="">Organized by: <%= page.data.meetings[0].owner[0].full_name %></p>
+                    <button id="contact-organizer-button" class="btn">Contact Organizer</button>
+                </div>
+                <div class="col-md-6 order-md-0 order-0">
+                    <a target="_blank" href="#" class="banner-img">
+                        <img src="../admin/assets/img/faq.svg" class="d-block" alt="header-image">
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="faq container">
+
+        <div class="faq-layouting layout-spacing">
+
+
+            <div class="fq-comman-question-wrapper">
+                <div class="row">
+                    <div class="col-md-12">
+                        <h3><%= page.data.meetings[0].meeting_description %></h3>
+                        <div class="row">
+                            <div class="col-md-6">
+                                <ul class="">
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        How to Install CORK
+                                    </li>
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        Gulp not running
+                                    </li>
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        Browser Sync not working
+                                    </li>
+                                </ul>
+                            </div>
+                            <div class="col-md-6">
+                                <ul class="">
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        File Strucutre
+                                    </li>
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        Demo Detail
+                                    </li>
+                                    <li class="list-unstyled">
+                                        <div class="icon-svg">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-check"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                        </div>
+                                        Build website and webapps
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="fq-tab-section">
+                <div class="row">
+                    <div class="col-md-12 mt-5">
+
+                        <h2>Agenda Items</h2>
+                        <% if (page.data.meetings[0].agenda_items.length > 0) { %>
+                            <div class="accordion" id="agendaItemsAccordionExample">
+                            <% page.data.meetings[0].agenda_items.forEach(function(agenda_item) { %> 
+                                <div class="card">
+                                    <div class="card-header" id="<%= agenda_item.order %>Heading">
+                                        <div class="mb-0" data-toggle="collapse" role="navigation" data-target="#<%= agenda_item.order %>" aria-expanded="false" aria-controls="<%= agenda_item.order %>">
+                                            <span class="faq-q-title"><%= agenda_item.item_name %></span>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>                            
+            </div>
+
+            <div class="fq-tab-section">
+                <div class="row">
+                    <div class="col-md-12 mb-5 mt-5">
+
+                        <h2>Attendees</h2>
+                        <% if (page.data.meetings[0].participants.length > 0) { %>
+                            <div class="accordion" id="attendeesAccordionExample">
+                            <% page.data.meetings[0].participants.forEach(function(participant) { %> 
+                                <div class="card">
+                                    <div class="card-header" id="<%= participant.id %>Heading">
+                                        <div class="mb-0" data-toggle="collapse" role="navigation" data-target="#<%= participant.id %>" aria-expanded="false" aria-controls="<%= participant.id %>">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-code"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg> <span class="faq-q-title"><%= participant.full_name %></span> <div class="like-faq"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-thumbs-up"><path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3zM7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"></path></svg> <span class="faq-like-count"></span></div>
+                                        </div>
+                                    </div>
+                                    <div id="<%= participant.id %>" class="collapse" aria-labelledby="<%= participant.id %>Heading" data-parent="#attendeesAccordionExample">
+                                        <div class="card-body">
+                                            <p>Anim pariatur cliche reprehenderit, enim eiusmod high life accusamus terry richardson ad squid. 3 wolf moon officia aute, non cupidatat skateboard dolor brunch. Food truck quinoa nesciunt laborum eiusmod. Brunch 3 wolf moon tempor, sunt aliqua put a bird on it squid single-origin coffee nulla assumenda shoreditch et. Nihil anim keffiyeh helvetica, craft beer labore wes anderson cred nesciunt sapiente ea proident. Ad vegan excepteur butcher vice lomo. Leggings occaecat craft beer farm-to-table, raw denim aesthetic synth nesciunt you probably haven't heard of them accusamus labore sustainable VHS.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            <% }) %>
+                            </div>
+                        <% } %>
+                    </div>
+                </div>                            
+            </div>
+
+        </div>
+    </div>
+
+
+    <!-- Templates -->
+    <% include templates/footerwrapper %> 
+    <% include templates/loginform %> 
+
+    <!-- BEGIN GLOBAL MANDATORY STYLES -->
+    <% include templates/footer %> 
+
+    <script src="../admin/plugins/perfect-scrollbar/perfect-scrollbar.min.js"></script>
+    <script src="../admin/assets/js/app.js"></script>
+    <script>
+        $(document).ready(function() {
+            App.init();
+        });
+    </script>
+    <script src="../admin/plugins/highlight/highlight.pack.js"></script>
+    <script src="../admin/assets/js/custom.js"></script>
+    <!-- END GLOBAL MANDATORY SCRIPTS -->
+
+    <!-- BEGIN PAGE LEVEL PLUGINS/CUSTOM SCRIPTS -->
+    <script src="../admin/assets/js/pages/faq/faq.js"></script>
+    <script src="../admin/assets/js/scrollspyNav.js"></script>
+    <script src="../admin/plugins/blockui/jquery.blockUI.min.js"></script>
+
+    <script src="../admin/plugins/blockui/custom-blockui.js"></script>
+    <!--  END CUSTOM SCRIPTS FILE  -->
+
+    <script>
+        $(document).ready(function() {
+            blockUI();
+        });
+
+        $('#modal-blockui').on('click', function() {
+            var block = $('#modal-reload');
+            $(block).block({ 
+                message: '<svg> ... </svg>',
+                showOverlay: false,
+                timeout: 0, //unblock after 2 seconds
+                css: {
+                    border: 0,
+                    color: '#000',
+                    padding: 0,
+                    backgroundColor: 'transparent'
+                }
+            });
+        });
+
+        function blockUI() {
+            $.blockUI({
+                message: '<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="feather feather-loader spin"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg>',
+                fadeIn: 800, 
+                timeout: 2000, //unblock after 2 seconds
+                overlayCSS: {
+                    backgroundColor: '#1b2024',
+                    opacity: 1.0,
+                    zIndex: 1200,
+                    cursor: 'wait'
+                },
+                css: {
+                    border: 0,
+                    color: '#fff',
+                    zIndex: 1201,
+                    padding: 0,
+                    backgroundColor: 'transparent'
+                },
+                onBlock: function() {
+                    clearTimeout();
+
+                    var isSessionActive = Boolean('<%= page.isSessionActive %>');
+                    console.log(isSessionActive);
+                    if (isSessionActive === false) {
+                        setTimeout(function() {
+                            $('#modal-blockui').click();
+                        }, 3000);
+                    }
+                } 
+            });
+        }
+
+        $('#contact-organizer-button').on('click', function() {
+            var emailAddress = String('<%= page.data.meetings[0].owner[0].email_address %>');
+            alert(emailAddress);
+        });
+    </script>
+</body>
+</html>

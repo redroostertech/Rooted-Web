@@ -14,11 +14,14 @@ const rp                                = require('request-promise');
 const moment                            = require('moment');
 const async                             = require('async');
 
+const twilio                            = require('twilio');
 const mailJet                           = require('node-mailjet').connect('b3711ac51c20213f29f627828b864471', '4b1b0d115a79c620e323ab576e80df26');
 
+var twilioClient = new twilio(configs.twilioAccountSid, configs.twilioAccountAuthToken);
+
 var Zoom = require('zoomus')({
-    key: 'z8O78FV9TtG8H9lIxqwR6w',
-    secret: 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF'
+    key: configs.zoomKey,
+    secret: configs.zoomSecret
    });
 
    //Use the ApiKey and APISecret from config.js
@@ -210,6 +213,13 @@ router.post('/eggman', function(req, res) {
                     "success": false,
                     "data": null,
                     "error_message": error.message
+                });
+
+                if (data.meetings.length === 0) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Meeting does not exist."
                 });
 
                 res.status(200).json({
@@ -544,7 +554,7 @@ router.post('/eggman', function(req, res) {
         email = req.body.email;
         var options = {
             method: "POST",
-            uri: "https://api.zoom.us/v2/users/" + email + "/meetings",
+            uri: "" + email + "/meetings",
             body: {
                 topic: "test create meeting",
                 type: 1,
@@ -1270,6 +1280,34 @@ function retrieveActivityForId(id, reference, completionHandler) {
 }
 
 function sendEmail(to, withSubject, textPart, htmlPart, customID) {
+    console.log(to);
+    const request = mailJet
+    .post("send", {'version': 'v3.1'})
+    .request({
+        "Messages":[
+            {
+                "From": {
+                    "Email": "zara@theappcalledrooted.com",
+                    "Name": "Zara from Rooted"
+                },
+                "To": to,
+                "Subject": withSubject,
+                "TextPart": textPart,
+                "HTMLPart": htmlPart,
+                "CustomID": customID
+            }
+        ]
+    })
+    request.then((result) => {
+        console.log(result.body);
+        // completionHandler(null, result);
+    }).catch((err) => {
+        console.log(err.statusCode);
+        // completionHandler(err, null);
+    })
+}
+
+function sendText(to, withSubject, textPart, htmlPart, customID) {
     console.log(to);
     const request = mailJet
     .post("send", {'version': 'v3.1'})
