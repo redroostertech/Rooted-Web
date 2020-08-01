@@ -34,6 +34,8 @@ router.post('/leo', function(req, res) {
         let password = req.body.password;
         let full_name = req.body.full_name;
         let phone_number_string = req.body.phone_number_string;
+        let public_key_string = req.body.public_key_string;
+        let private_key_encrypted_string = req.body.private_key_encrypted_string;
 
         if (!email || !password || !full_name || !phone_number_string) return res.status(200).json({
             "status": 200,
@@ -74,6 +76,8 @@ router.post('/leo', function(req, res) {
                             email_address: email,
                             uid: uid,
                             token: customToken,
+                            public_key_string: public_key_string,
+                            private_key_encrypted_string: private_key_encrypted_string,
                             createdAt: new Date(),
                             lastLogin: new Date(),
                             first_name: null,
