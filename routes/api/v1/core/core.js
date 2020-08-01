@@ -44,7 +44,7 @@ router.post('/eggman', function(req, res) {
     if (action == 'update_user') {
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('users');
-            let data = JSON.parse(req.body.data);
+            let data = req.body.data;
 
             console.log(data);
 
