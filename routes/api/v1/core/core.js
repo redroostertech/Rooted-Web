@@ -46,6 +46,8 @@ router.post('/eggman', function(req, res) {
             let refCollection = reference.collection('users');
             let data = JSON.parse(req.body.data);
 
+            console.log(data);
+
             if (!req.body.key || !req.body.uid) return res.status(200).json({
                 "status": 200,
                 "success": false,
