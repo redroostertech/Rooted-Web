@@ -142,35 +142,35 @@ router.post('/eggman', function(req, res) {
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
-        var agendaItems = data.agenda_items;
+        // var agendaItems = data.agenda_items;
 
-        console.log('\n\nAgenda Items\n');
-        if (agendaItems && agendaItems.length > 0) {
+        // console.log('\n\nAgenda Items\n');
+        // if (agendaItems && agendaItems.length > 0) {
 
-            var agendaItemObject = agendaItems[0];
+        //     var agendaItemObject = agendaItems[0];
             
-            var agendaItemOrder = agendaItemObject.order;
-            var agendaItemName = agendaItemObject.item_name;
+        //     var agendaItemOrder = agendaItemObject.order;
+        //     var agendaItemName = agendaItemObject.item_name;
 
-            if (agendaItemOrder.length > 0 && agendaItemName.length > 0) {
-                var i = 0;
-                var newAgendaItems = new Array();
+        //     if (agendaItemOrder.length > 0 && agendaItemName.length > 0) {
+        //         var i = 0;
+        //         var newAgendaItems = new Array();
 
-                while (i < agendaItemOrder.length) {
-                    var item = {
-                        item_name: agendaItemName[i],
-                        order: agendaItemOrder[i]
-                    }
-                    newAgendaItems.push(item);
-                    i++;
-                }
+        //         while (i < agendaItemOrder.length) {
+        //             var item = {
+        //                 item_name: agendaItemName[i],
+        //                 order: agendaItemOrder[i]
+        //             }
+        //             newAgendaItems.push(item);
+        //             i++;
+        //         }
 
-                console.log('\n\nNew Agenda Items\n');
-                console.log(newAgendaItems);
+        //         console.log('\n\nNew Agenda Items\n');
+        //         console.log(newAgendaItems);
                 
-                data.agenda_items = newAgendaItems;
-            }
-        }
+        //         data.agenda_items = newAgendaItems;
+        //     }
+        // }
         
         data.meeting_participants_ids = [data.owner_id];
         data.createdAt = new Date();
