@@ -131,7 +131,8 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'save_meeting') {
-        let data = JSON.parse(JSON.parse(req.body.data));
+        // let data = JSON.parse(JSON.parse(req.body.data));
+        let data = JSON.parse(req.body.data);
         console.log('Request Body Data');
         console.log(data);
 
