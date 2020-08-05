@@ -131,10 +131,11 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'save_meeting') {
-        let data = req.body.data;
-        console.log('Request Body Data\n');
+        let data = JSON.parse(JSON.parse(req.body.data));
+        console.log('Request Body Data');
         console.log(data);
 
+        console.log(data.owner_id);
         if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -178,27 +179,27 @@ router.post('/eggman', function(req, res) {
         console.log('\n\nFinished Data\n');
         console.log(data);
 
-        getFirebaseFirStorageInstance(res, function(reference) {
-            let refCollection = reference.collection('meetings');
-            refCollection.add(data).then(function(docRef) {
-                console.log("Document written with ID: ", docRef.id);
-                data.key = docRef.id;
-                res.status(200).json({
-                    "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
-                });
-            }).catch(function (error) {
-                // arrayOfErrors.push(error.message);
-                res.status(200).json({
-                    "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": error.message
-                });
-            });
-        });
+        // getFirebaseFirStorageInstance(res, function(reference) {
+        //     let refCollection = reference.collection('meetings');
+        //     refCollection.add(data).then(function(docRef) {
+        //         console.log("Document written with ID: ", docRef.id);
+        //         data.key = docRef.id;
+        //         res.status(200).json({
+        //             "status": 200,
+        //             "success": true,
+        //             "data": data,
+        //             "error_message": null
+        //         });
+        //     }).catch(function (error) {
+        //         // arrayOfErrors.push(error.message);
+        //         res.status(200).json({
+        //             "status": 200,
+        //             "success": false,
+        //             "data": null,
+        //             "error_message": error.message
+        //         });
+        //     });
+        // });
     }
 
     if (action == 'retrieve_upcoming_meetings_for_user') {
