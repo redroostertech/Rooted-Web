@@ -180,27 +180,27 @@ router.post('/eggman', function(req, res) {
         console.log('\n\nFinished Data\n');
         console.log(data);
 
-        // getFirebaseFirStorageInstance(res, function(reference) {
-        //     let refCollection = reference.collection('meetings');
-        //     refCollection.add(data).then(function(docRef) {
-        //         console.log("Document written with ID: ", docRef.id);
-        //         data.key = docRef.id;
-        //         res.status(200).json({
-        //             "status": 200,
-        //             "success": true,
-        //             "data": data,
-        //             "error_message": null
-        //         });
-        //     }).catch(function (error) {
-        //         // arrayOfErrors.push(error.message);
-        //         res.status(200).json({
-        //             "status": 200,
-        //             "success": false,
-        //             "data": null,
-        //             "error_message": error.message
-        //         });
-        //     });
-        // });
+        getFirebaseFirStorageInstance(res, function(reference) {
+            let refCollection = reference.collection('meetings');
+            refCollection.add(data).then(function(docRef) {
+                console.log("Document written with ID: ", docRef.id);
+                data.key = docRef.id;
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            }).catch(function (error) {
+                // arrayOfErrors.push(error.message);
+                res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+            });
+        });
     }
 
     if (action == 'retrieve_upcoming_meetings_for_user') {
