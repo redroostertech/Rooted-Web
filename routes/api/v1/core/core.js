@@ -842,6 +842,39 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
                                 }
                             })
                         },
+                        declined_participants: function(callback) {
+                            var participants = new Array();
+                            let prefCollection = reference.collection('users');
+                            async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                                prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                                    async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                        var prefdata = d.data();
+                                        prefdata.key = d.id;
+                                        participants.push(prefdata);
+                                        c();
+                                    }, function(_e) {
+                                        if (_e) { 
+                                            console.log(_e.message);
+                                            completion(_e, participants);
+                                        } else {
+                                            completion(null, participants);
+                                        }
+                                    });
+                                }).catch(function (error) {
+                                    if (error) {
+                                        console.log(error.message);
+                                        callback(error, null);
+                                    }
+                                });
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    callback(_e, participants);
+                                } else {
+                                    callback(null, participants);
+                                }
+                            })
+                        },
                     }, function(error, results) {
                         console.log(results);
                         console.log(error);
@@ -854,6 +887,10 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
 
                         if (results.participants) {
                             userDoc.participants = results.participants;
+                        }
+
+                        if (results.declined_participants) {
+                            userDoc.declined_participants = results.declined_participants;
                         }
 
                         users.push(userDoc);
@@ -940,6 +977,39 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
                                 }
                             })
                         },
+                        declined_participants: function(callback) {
+                            var participants = new Array();
+                            let prefCollection = reference.collection('users');
+                            async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                                prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                                    async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                        var prefdata = d.data();
+                                        prefdata.key = d.id;
+                                        participants.push(prefdata);
+                                        c();
+                                    }, function(_e) {
+                                        if (_e) { 
+                                            console.log(_e.message);
+                                            completion(_e, participants);
+                                        } else {
+                                            completion(null, participants);
+                                        }
+                                    });
+                                }).catch(function (error) {
+                                    if (error) {
+                                        console.log(error.message);
+                                        callback(error, null);
+                                    }
+                                });
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    callback(_e, participants);
+                                } else {
+                                    callback(null, participants);
+                                }
+                            })
+                        },
                     }, function(error, results) {
                         console.log(results);
                         console.log(error);
@@ -952,6 +1022,10 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
 
                         if (results.participants) {
                             userDoc.participants = results.participants;
+                        }
+
+                        if (results.declined_participants) {
+                            userDoc.declined_participants = results.declined_participants;
                         }
 
                         users.push(userDoc);
@@ -1071,6 +1145,39 @@ function retrieveMeetings(uid, reference, completionHandler) {
                         }
                     })
                 },
+                declined_participants: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
                 activity: function(callback) {
                     callback();
                 }
@@ -1086,6 +1193,10 @@ function retrieveMeetings(uid, reference, completionHandler) {
 
                 if (results.participants) {
                     userDoc.participants = results.participants;
+                }
+
+                if (results.declined_participants) {
+                    userDoc.declined_participants = results.declined_participants;
                 }
 
                 users.push(userDoc);
