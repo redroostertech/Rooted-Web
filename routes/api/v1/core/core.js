@@ -1313,7 +1313,9 @@ function removeParticipantForMeeting(data, id, reference, completionHandler) {
             }
 
             var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
-            if (typeof declinedMeetingPaticipantsIds !== 'undefined' || !declinedMeetingPaticipantsIds.includes(id)) {
+            console.log(typeof declinedMeetingPaticipantsIds !== 'undefined');
+            if (typeof declinedMeetingPaticipantsIds !== 'undefined') {
+                if (declinedMeetingPaticipantsIds.includes(id)) return;
                 declinedMeetingPaticipantsIds.push(data);
                 // declinedMeetingPaticipantsIds = new Array();
             } else {
