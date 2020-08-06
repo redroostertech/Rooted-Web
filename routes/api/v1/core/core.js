@@ -1354,15 +1354,23 @@ function updateMeetingForId(data, id, reference, completionHandler) {
     let refCollection = reference.collection('meetings');
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
-            var meetingParticipantsId = doc.data().meeting_participants_ids;
+            var object = new Object();
 
-            if (meetingParticipantsId.includes(data)) {
-                return completion();
+            var meetingParticipantsId = doc.data().meeting_participants_ids;
+            console.log(typeof meetingParticipantsId !== 'undefined');
+            if (typeof meetingParticipantsId !== 'undefined') {
+                if (!meetingParticipantsId.includes(data)) {
+                    meetingParticipantsId.push(data);
+                    object['meeting_participants_ids'] = meetingParticipantsId;
+                }
             } 
 
-            meetingParticipantsId.push(data);
-            var object = {
-                'meeting_participants_ids': meetingParticipantsId
+            var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
+            console.log(typeof declinedMeetingPaticipantsIds !== 'undefined');
+            if (typeof declinedMeetingPaticipantsIds !== 'undefined') {
+                object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds.filter(function(participantId) {
+                    return participantId !== data
+                });
             }
 
             // var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
@@ -1417,27 +1425,29 @@ function removeParticipantForMeeting(data, id, reference, completionHandler) {
     let refCollection = reference.collection('meetings');
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
-            var meetingParticipantsId = doc.data().meeting_participants_ids.filter(function(participantId) {
-                return participantId !== data
-            });
+            var object = new Object();
 
-            var object = {
-                'meeting_participants_ids': meetingParticipantsId
+            var meetingParticipantsId = doc.data().meeting_participants_ids;
+            console.log(typeof meetingParticipantsId !== 'undefined');
+            if (typeof meetingParticipantsId !== 'undefined') {
+                object['meeting_participants_ids'] = doc.data().meeting_participants_ids.filter(function(participantId) {
+                    return participantId !== data
+                });
             }
 
             var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
             console.log(typeof declinedMeetingPaticipantsIds !== 'undefined');
             if (typeof declinedMeetingPaticipantsIds !== 'undefined') {
-                if (declinedMeetingPaticipantsIds.includes(id)) return;
-                declinedMeetingPaticipantsIds.push(data);
-                // declinedMeetingPaticipantsIds = new Array();
+                if (!declinedMeetingPaticipantsIds.includes(id)) {
+                    // declinedMeetingPaticipantsIds = new Array();
+                    declinedMeetingPaticipantsIds.push(data);
+                    object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds;
+                }
             } else {
                 // declinedMeetingPaticipantsIds = new Array();
                 declinedMeetingPaticipantsIds = new Array(data);
-            }
-
-            object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds;
-            
+                object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds;
+            }            
             refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
                 completion();
             }).catch(function (error) {
