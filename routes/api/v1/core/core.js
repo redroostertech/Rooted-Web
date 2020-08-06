@@ -1372,18 +1372,7 @@ function updateMeetingForId(data, id, reference, completionHandler) {
                     return participantId !== data
                 });
             }
-
-            // var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
-            // if (typeof declinedMeetingPaticipantsIds !== 'undefined' || !declinedMeetingPaticipantsIds.includes(id)) {
-            //     declinedMeetingPaticipantsIds.push(id);
-            //     // declinedMeetingPaticipantsIds = new Array();
-            // } else {
-            //     // declinedMeetingPaticipantsIds = new Array();
-            //     declinedMeetingPaticipantsIds = new Array(id);
-            // }
-
-            // object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds;
-
+            
             refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
                 completion();
             }).catch(function (error) {
