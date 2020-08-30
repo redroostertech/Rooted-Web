@@ -212,7 +212,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveUpcomingMeetings(req.body.uid, reference, function(error, data) {
+            retrieveUpcomingMeetings('meetings', req.body.uid, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -239,7 +239,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetings(req.body.uid, reference, function(error, data) {
+            retrieveMeetings('meetings', req.body.uid, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -266,7 +266,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById(req.body.meetingId, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.meetingId, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -300,7 +300,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            updateMeetingForId(req.body.user_id, req.body.meeting_id, reference, function(error, data) {
+            updateMeetingForId('meetings', req.body.user_id, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -327,7 +327,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            removeParticipantForMeeting(req.body.user_id, req.body.meeting_id, reference, function(error, data) {
+            removeParticipantForMeeting('meetings', req.body.user_id, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -354,7 +354,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById(req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -414,7 +414,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById(req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -481,7 +481,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById(req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -606,6 +606,165 @@ router.post('/eggman', function(req, res) {
             });
         });
         
+    }
+
+    // Drafts
+    if (action == 'save_draft') {
+        // let data = JSON.parse(JSON.parse(req.body.data));
+        let data = JSON.parse(req.body.data);
+        console.log('Request Body Data');
+        console.log(data);
+
+        console.log(data.owner_id);
+        if (!data.owner_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        data.meeting_participants_ids = [data.owner_id];
+        data.createdAt = new Date();
+
+        console.log('\n\nFinished Data\n');
+        console.log(data);
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            let refCollection = reference.collection('draft-meetings');
+            refCollection.add(data).then(function(docRef) {
+                console.log("Document written with ID: ", docRef.id);
+                data.key = docRef.id;
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            }).catch(function (error) {
+                // arrayOfErrors.push(error.message);
+                res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+            });
+        });
+    }
+
+    if (action == 'update_draft') {
+        if (!req.body.meeting_id || !req.body.user_id || !req.body.data) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById('draft-meetings', req.body.meeting_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                if (meeting.user_id !== req.body.owner_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You do not have the permission to delete this meeting."
+                });
+
+                let updateData = JSON.parse(req.body.data);
+                console.log("Update data");
+                console.log(updateData);
+                Object.keys(updateData).forEach(function(key) {
+                    meeting[key] = updateData[key];
+                });
+                reference.collection('draft-meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "meeting_id": req.body.meeting_id
+                        },
+                        "error_message": null 
+                    });
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
+    if (action == 'delete_draft') {
+        if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById('draft-meetings', req.body.meeting_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                if (meeting.owner_id !== req.body.owner_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You do not have the permission to delete this meeting."
+                });
+
+                reference.collection('draft-meetings').doc(meeting.key).delete().then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "message": "Meeting was deleted.",
+                            "deleted_message": data
+                        },
+                        "error_message": null
+                    });
+                }).catch(function(error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
     }
 
     // MARK: - ZOOM
@@ -766,12 +925,12 @@ function getFirebaseFirStorageInstance(res, callback) {
     });
 }
 
-function retrieveUpcomingMeetings(uid, reference, completionHandler) {
+function retrieveUpcomingMeetings(collection, uid, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
     async.parallel({
         other_meetings: function(callback) {
-            let refCollection = reference.collection('meetings');
+            let refCollection = reference.collection(collection);
             refCollection.where('meeting_participants_ids','array-contains', uid).get(getOptions).then(function(querySnapshot) {
                 var users = new Array();
 
@@ -1071,10 +1230,10 @@ function retrieveUpcomingMeetings(uid, reference, completionHandler) {
     });
 }
 
-function retrieveMeetings(uid, reference, completionHandler) {
+function retrieveMeetings(collection, uid, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
-    let refCollection = reference.collection('meetings');
+    let refCollection = reference.collection(collection);
     refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
@@ -1214,9 +1373,9 @@ function retrieveMeetings(uid, reference, completionHandler) {
     });  
 }
 
-function retrieveMeetingsById(id, reference, completionHandler) {
+function retrieveMeetingsById(collection, id, reference, completionHandler) {
     // Get the original user data
-    let refCollection = reference.collection('meetings');
+    let refCollection = reference.collection(collection);
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
@@ -1349,9 +1508,9 @@ function retrieveMeetingsById(id, reference, completionHandler) {
     });  
 }
 
-function updateMeetingForId(data, id, reference, completionHandler) {
+function updateMeetingForId(collection, data, id, reference, completionHandler) {
     // Get the original user data
-    let refCollection = reference.collection('meetings');
+    let refCollection = reference.collection(collection);
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var object = new Object();
@@ -1387,9 +1546,9 @@ function updateMeetingForId(data, id, reference, completionHandler) {
     });  
 }
 
-function updateStatusForMeetingForId(data, id, reference, completionHandler) {
+function updateStatusForMeetingForId(collection, data, id, reference, completionHandler) {
     // Get the original user data
-    let refCollection = reference.collection('meetings');
+    let refCollection = reference.collection(collection);
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             let object = {
@@ -1409,9 +1568,9 @@ function updateStatusForMeetingForId(data, id, reference, completionHandler) {
     });  
 }
 
-function removeParticipantForMeeting(data, id, reference, completionHandler) {
+function removeParticipantForMeeting(collection, data, id, reference, completionHandler) {
     // Get the original user data
-    let refCollection = reference.collection('meetings');
+    let refCollection = reference.collection(collection);
     refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var object = new Object();
