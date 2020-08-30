@@ -609,6 +609,33 @@ router.post('/eggman', function(req, res) {
     }
 
     // Drafts
+    if (action == 'retrieve_meeting_drafts_for_user') {
+        if (!req.body.uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveDraftMeetings('draft-meetings', req.body.uid, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+
     if (action == 'save_draft') {
         // let data = JSON.parse(JSON.parse(req.body.data));
         let data = JSON.parse(req.body.data);
@@ -1242,6 +1269,146 @@ function retrieveMeetings(collection, uid, reference, completionHandler) {
 
             // console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
             if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
+
+            userDoc.key = doc.id;
+
+            // Get the additional information for user
+            async.parallel({
+                owner: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                },
+                participants: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.meeting_participants_ids, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
+                declined_participants: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
+                activity: function(callback) {
+                    callback();
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.owner) {
+                    userDoc.owner = results.owner;
+                }
+
+                if (results.participants) {
+                    userDoc.participants = results.participants;
+                }
+
+                if (results.declined_participants) {
+                    userDoc.declined_participants = results.declined_participants;
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "meetings": users
+            }
+            completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function retrieveDraftMeetings(collection, uid, reference, completionHandler) {
+    // Get the original user data
+    // Get the additional information for user
+    let refCollection = reference.collection(collection);
+    refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
+        var users = new Array();
+
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
 
             userDoc.key = doc.id;
 
