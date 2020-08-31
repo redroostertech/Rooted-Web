@@ -716,7 +716,7 @@ router.post('/eggman', function(req, res) {
                     });
                 }
 
-                reference.collection('draft_meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                reference.collection('draft_meetings').doc(meeting.key).set(meeting).then(function() {
                     res.status(200).json({
                         "status": 200,
                         "success": true,
