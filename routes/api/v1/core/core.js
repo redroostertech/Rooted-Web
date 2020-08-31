@@ -669,23 +669,67 @@ router.post('/eggman', function(req, res) {
         console.log(data);
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            let refCollection = reference.collection('draft_meetings');
-            refCollection.add(data).then(function(docRef) {
-                console.log("Document written with ID: ", docRef.id);
-                data.key = docRef.id;
-                res.status(200).json({
-                    "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
-                });
-            }).catch(function (error) {
-                // arrayOfErrors.push(error.message);
-                res.status(200).json({
-                    "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": error.message
+            retrieveDraftMeetingById('draft_meetings', data.id, reference, function(error, result) {
+
+                var meeting = result.meetings[0];
+                if (!meeting) {
+                    let refCollection = reference.collection('draft_meetings');
+                    refCollection.add(data).then(function(docRef) {
+                        console.log("Document written with ID: ", docRef.id);
+                        data.key = docRef.id;
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    }).catch(function (error) {
+                        // arrayOfErrors.push(error.message);
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+                    });
+                }
+
+                if (meeting.owner_id !== data.owner_id) {
+                    let refCollection = reference.collection('draft_meetings');
+                    refCollection.add(data).then(function(docRef) {
+                        console.log("Document written with ID: ", docRef.id);
+                        data.key = docRef.id;
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    }).catch(function (error) {
+                        // arrayOfErrors.push(error.message);
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+                    });
+                }
+
+                reference.collection('draft_meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": data,
+                        "error_message": null 
+                    });
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
                 });
             });
         });
