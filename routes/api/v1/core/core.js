@@ -204,7 +204,7 @@ router.post('/eggman', function(req, res) {
 
                 res.status(200).json({
                     "status": 200,
-                    "success": false,
+                    "success": true,
                     "data": {
                         "meeting": [results.save],
                         "draftDeleted": results.delete_draft
