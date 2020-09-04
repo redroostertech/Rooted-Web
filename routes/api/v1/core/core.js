@@ -227,14 +227,14 @@ router.post('/eggman', function(req, res) {
         if (!req.body.date) {
             startDate = moment().subtract(1, 'days').format();
         } else {
-            startDate = moment(req.body.date).format();
+            startDate = moment(req.body.date).subtract(1, 'days').format();
         }
 
         var endDate;
         if (!req.body.endDate) {
             endDate = moment().add(1, 'days').format();
         } else {
-            endDate = moment(req.body.endDate).format();
+            endDate = moment(req.body.endDate).add(1, 'days').format();
         }
 
         getFirebaseFirStorageInstance(res, function(reference) {
@@ -1029,6 +1029,9 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
     
     // Get the original user data
     // Get the additional information for user
+    console.log("The day before: " + optionalStartDate);
+    console.log("The Day After: " + optionalEndDate);
+
     async.parallel({
         other_meetings: function(callback) {
             let refCollection = reference.collection(collection);
@@ -1172,7 +1175,6 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
 
                 async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
                     var userDoc = doc.data();
-
                     userDoc.key = doc.id;
 
                     // Get the additional information for user
@@ -1331,6 +1333,8 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
 function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
+    console.log("The day before: " + optionalStartDate);
+    console.log("The Day After: " + optionalEndDate);
     let refCollection = reference.collection(collection);
     refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
