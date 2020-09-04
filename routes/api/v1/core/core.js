@@ -251,7 +251,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetings('meetings', req.body.uid, reference, function(error, data) {
+            retrieveMeetings('meetings', req.body.uid, req.body.date, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -1313,19 +1313,21 @@ function retrieveUpcomingMeetings(collection, uid, reference, completionHandler)
     });
 }
 
-function retrieveMeetings(collection, uid, reference, completionHandler) {
+function retrieveMeetings(collection, uid, optionalDate, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
     let refCollection = reference.collection(collection);
-    refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
+    var yesterday = moment(optionalDate).subtract(1, 'days').format();
+    console.log('Yesterday');
+    console.log(yesterday);
+    var tomorrow = moment(optionalDate).add(1, 'days').format();
+    console.log('Tomorrow');
+    console.log(tomorrow);
+    refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", yesterday).where("meeting_date.start_date", "<=", tomorrow).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
-
-            // console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
-            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
-
             userDoc.key = doc.id;
 
             // Get the additional information for user
@@ -2025,7 +2027,7 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 }, 
                 meetings: function(callback) {
                     var accountTypes = new Array();
-                    retrieveMeetings(userDoc.uid, reference, function(error, data) {
+                    retrieveMeetings('meetings', userDoc.uid, moment().format(), reference, function(error, data) {
                         if (error) { 
                             console.log(error.message);
                             callback(error, accountTypes);
