@@ -223,8 +223,22 @@ router.post('/eggman', function(req, res) {
             "error_message": "Something went wrong. Please try again."
         });
 
+        var startDate; 
+        if (!req.body.date) {
+            startDate = moment().subtract(1, 'days').format();
+        } else {
+            startDate = moment(req.body.date).format();
+        }
+
+        var endDate;
+        if (!req.body.endDate) {
+            endDate = moment().add(1, 'days').format();
+        } else {
+            endDate = moment(req.body.endDate).format();
+        }
+
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveUpcomingMeetings('meetings', req.body.uid, reference, function(error, data) {
+            retrieveUpcomingMeetings('meetings', req.body.uid, startDate, endDate, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -242,7 +256,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'retrieve_meetings_for_user') {
+    if (action == 'retrieve_sent_meetings_for_user') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -250,8 +264,11 @@ router.post('/eggman', function(req, res) {
             "error_message": "Something went wrong. Please try again."
         });
 
+        var startDate = moment().subtract(7, 'days').format();
+        var endDate = moment().add(1, 'days').format();
+
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetings('meetings', req.body.uid, req.body.date, reference, function(error, data) {
+            retrieveMeetings('meetings', req.body.uid, startDate, endDate, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -1008,13 +1025,14 @@ function getFirebaseFirStorageInstance(res, callback) {
     });
 }
 
-function retrieveUpcomingMeetings(collection, uid, reference, completionHandler) {
+function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEndDate, reference, completionHandler) {
+    
     // Get the original user data
     // Get the additional information for user
     async.parallel({
         other_meetings: function(callback) {
             let refCollection = reference.collection(collection);
-            refCollection.where('meeting_participants_ids','array-contains', uid).get(getOptions).then(function(querySnapshot) {
+            refCollection.where('meeting_participants_ids','array-contains', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
                 var users = new Array();
 
                 async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
@@ -1148,15 +1166,12 @@ function retrieveUpcomingMeetings(collection, uid, reference, completionHandler)
         },
 
         my_meetings: function(callback) {
-            let refCollection = reference.collection('meetings');
-            refCollection.where('owner_id','==', uid).get(getOptions).then(function(querySnapshot) {
+            let refCollection = reference.collection(collection);
+            refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
                 var users = new Array();
 
                 async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
                     var userDoc = doc.data();
-
-                    console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
-                    if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
 
                     userDoc.key = doc.id;
 
@@ -1313,17 +1328,11 @@ function retrieveUpcomingMeetings(collection, uid, reference, completionHandler)
     });
 }
 
-function retrieveMeetings(collection, uid, optionalDate, reference, completionHandler) {
+function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
     let refCollection = reference.collection(collection);
-    var yesterday = moment(optionalDate).subtract(1, 'days').format();
-    console.log('Yesterday');
-    console.log(yesterday);
-    var tomorrow = moment(optionalDate).add(1, 'days').format();
-    console.log('Tomorrow');
-    console.log(tomorrow);
-    refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", yesterday).where("meeting_date.start_date", "<=", tomorrow).get(getOptions).then(function(querySnapshot) {
+    refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
