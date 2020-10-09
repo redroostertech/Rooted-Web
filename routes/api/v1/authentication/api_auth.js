@@ -155,6 +155,132 @@ router.post('/leo', function(req, res) {
         });
     }
 
+    if (action == 'google_registration') {
+        let email = req.body.email;
+        let full_name = req.body.full_name;
+        let public_key_string = req.body.public_key_string;
+        let private_key_encrypted_string = req.body.private_key_encrypted_string;
+        let id_token = req.body.id_token;
+
+        if (!email || !full_name || !id_token) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseAuthInstance(res, function(auth){ 
+            auth.signOut().then(function() {
+                // Build Firebase credential with the Google ID token.
+                var credential = auth.GoogleAuthProvider.credential(id_token);
+                auth.signInWithCredential(credential).then(function () {
+                    if (!auth.currentUser) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": "Sorry! Something went wrong. Please try again later." 
+                    });
+
+                    const uid = auth.currentUser.uid;
+
+                    jwt.sign({ 
+                        uid: uid 
+                    }, 
+                    jwtrefresh, 
+                    {
+                        expiresIn: jwtrefreshLimit
+                    }, function(err, customToken) {
+                        if (err) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": err.message
+                        });
+                        // Create user
+                        var userObject = {
+                            id: randomstring.generate(25),
+                            email_address: email,
+                            uid: uid,
+                            token: customToken,
+                            public_key_string: public_key_string,
+                            private_key_encrypted_string: private_key_encrypted_string,
+                            createdAt: new Date(),
+                            lastLogin: new Date(),
+                            first_name: null,
+                            full_name: full_name,
+                            last_name: null,
+                            preferred_currency: 'USD',
+                            initial_setup : false,
+                            account_type_id: 10,
+                            maximum_events: 3,
+                            address_line_1 : null,
+                            address_line_2 : null,
+                            address_line_3 : null,
+                            address_line_4 : null,
+                            address_city : null,
+                            address_state : null,
+                            address_zip_code : null,
+                            address_long : null,
+                            address_lat : null,
+                            address_country: null,
+                            address_description: null,
+                            bio: null,
+                            job_title: null,
+                            company_name: null,
+                            phone_number_country_code: null,
+                            phone_number_area_code: null,
+                            phone_number_string: null,
+                            gender: null,
+                            dob: null,
+                            user_preferences: [0, 1, 2, 3],
+                            card_on_file: false,
+                            payment_info_id: new Array(),
+                            last_known_checkin_ids: new Array(),
+                        }
+
+                        getFirebaseFirStorageInstance(res, function(reference) {
+                            let refCollection = reference.collection('users');
+                            refCollection.add(userObject).then(function(docRef) {
+                                console.log("Document written with ID: ", docRef.id);
+                                retrieveUserObject(auth.currentUser.uid, reference, function(error, data) {
+                                    if (error) return res.status(200).json({
+                                        "status": 200,
+                                        "success": false,
+                                        "data": null,
+                                        "error_message": error.message
+                                    });
+            
+                                    res.status(200).json({
+                                        "status": 200,
+                                        "success": true,
+                                        "data": data,
+                                        "error_message": null
+                                    });
+                                });
+                            }).catch(function (error) {
+                                // arrayOfErrors.push(error.message);
+                                res.status(200).json({
+                                    "status": 200,
+                                    "success": false,
+                                    "data": null,
+                                    "error_message": error.message
+                                });
+                            });
+                        });
+
+                    })
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
     if (action == 'email_login') {
 
         let email = req.body.email;

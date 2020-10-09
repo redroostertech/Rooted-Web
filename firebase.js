@@ -5,7 +5,6 @@ var admin               = require('firebase-admin');
 var configs             = require('./configs');
 var FCM                 = require('fcm-node');
 const { Storage }         = require('@google-cloud/storage');
-const { GeoCollectionReference, GeoFirestore, GeoQuery, GeoQuerySnapshot } = require('geofirestore');
 
 require("firebase/auth");
 require("firebase/database");
@@ -30,7 +29,6 @@ var firebaseAdmin;
 var firbaseStorage;
 var firebaseFirestoreDB; 
 var firebaseRealtimeDB;
-var firebaseGeo; 
 var fcm;
 
 var serviceAccount = require(firstoragefilename);  //  MARK:- Uncomment and provide url to service account .json file.
@@ -82,20 +80,6 @@ function setupFirebaseStorage(callback) {
     callback();
 }
 
-function setupGeoFireClass(callback) {
-    const firestore = firebase.firestore();
-    firebaseGeo = new GeoFirestore(firestore);
-    callback();
-}
-
-function generateGeopoint(lat, long, callback) {
-    const point = new admin.firestore.GeoPoint(lat, long);
-    callback({
-        g: geohash.encode(lat, long, 10),
-        l: point
-    })
-}
-
 function setupFCM(callback) {
     fcm = new FCM(serviceAccount);
     callback();
@@ -118,9 +102,6 @@ module.exports.setup = function firebaseSetup() {
     setupFirebaseStorage(function() {
         console.log('Completed setting up base firebase storage app');
     });
-    setupGeoFireClass(function() {
-        console.log('Completed setting up base geoFire object');
-    });
     setupFCM(function() {
         console.log('Completed setting up FCM object');
     });
@@ -142,14 +123,6 @@ module.exports.firebase_auth = function setupAuth(callback) {
 }
 module.exports.firebase_storage = function setupStorage(callback) {
     callback(firbaseStorage.bucket(configs.firstoragebucket));
-}
-module.exports.firebase_geo = function setupGeoFire(callback) {
-    callback(firebaseGeo);
-}
-module.exports.generate_geopoint = function generate_Geopoint(lat, long, callback) {
-    generateGeopoint(lat, long, function(point) {
-        callback(point);
-    })
 }
 module.exports.fcm = function setupFCM(callback) {
     callback(fcm);
