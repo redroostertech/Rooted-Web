@@ -231,7 +231,7 @@ router.post('/leo', function(req, res) {
                             let refCollection = reference.collection('users');
                             refCollection.add(userObject).then(function(docRef) {
                                 console.log("Document written with ID: ", docRef.id);
-                                retrieveUserObject(auth.currentUser.uid, reference, function(error, data) {
+                                retrieveUserObject(uid, reference, function(error, data) {
                                     if (error) return res.status(200).json({
                                         "status": 200,
                                         "success": false,
@@ -259,7 +259,7 @@ router.post('/leo', function(req, res) {
                     });
                 }
 
-                data.user[0].email_address = currentUser.email;
+                data.user[0].email_address = email;
                 data.user[0].token = customToken;
                 
                 res.status(200).json({
