@@ -178,20 +178,22 @@ router.post('/leo', function(req, res) {
                     "error_message": "Email or password are invalid. Please try again."
                 });
                 
-                if (typeof data.user[0] == 'undefined') {
-                    jwt.sign({ 
-                        uid: uid 
-                    }, 
-                    jwtrefresh, 
-                    {
-                        expiresIn: jwtrefreshLimit
-                    }, function(err, customToken) {
-                        if (err) return res.status(200).json({
-                            "status": 200,
-                            "success": false,
-                            "data": null,
-                            "error_message": err.message
-                        });
+                jwt.sign({ 
+                    uid: uid 
+                }, 
+                jwtrefresh, 
+                {
+                    expiresIn: jwtrefreshLimit
+                }, function(err, customToken) {
+                    if (err) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": err.message
+                    });
+
+                    if (typeof data.user[0] == 'undefined') {
+
                         // Create user
                         var userObject = {
                             id: randomstring.generate(25),
@@ -235,46 +237,45 @@ router.post('/leo', function(req, res) {
                         }
 
                         getFirebaseFirStorageInstance(res, function(ref) {
-                        let refCollection = ref.collection('users');
-                        refCollection.add(userObject).then(function(docRef) {
-                            console.log("Document written with ID: ", docRef.id);
-                            retrieveUserObject(uid, ref, function(error, data) {
-                                if (error) return res.status(200).json({
+                            let refCollection = ref.collection('users');
+                            refCollection.add(userObject).then(function(docRef) {
+                                console.log("Document written with ID: ", docRef.id);
+                                retrieveUserObject(uid, ref, function(error, data) {
+                                    if (error) return res.status(200).json({
+                                        "status": 200,
+                                        "success": false,
+                                        "data": null,
+                                        "error_message": error.message
+                                    });
+            
+                                    res.status(200).json({
+                                        "status": 200,
+                                        "success": true,
+                                        "data": data,
+                                        "error_message": null
+                                    });
+                                });
+                            }).catch(function (error) {
+                                res.status(200).json({
                                     "status": 200,
                                     "success": false,
                                     "data": null,
                                     "error_message": error.message
                                 });
-        
-                                res.status(200).json({
-                                    "status": 200,
-                                    "success": true,
-                                    "data": data,
-                                    "error_message": null
-                                });
-                            });
-                        }).catch(function (error) {
-                            res.status(200).json({
-                                "status": 200,
-                                "success": false,
-                                "data": null,
-                                "error_message": error.message
                             });
                         });
-                    });
-                    });
-                } else {
-
-                    data.user[0].email_address = email;
-                    data.user[0].token = customToken;
-                    
-                    res.status(200).json({
-                        "status": 200,
-                        "success": true,
-                        "data": data,
-                        "error_message": null
-                    });
-                }
+                    } else {
+                        data.user[0].email_address = email;
+                        data.user[0].token = customToken;
+                        
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    }
+                });
             });
         });
     }
