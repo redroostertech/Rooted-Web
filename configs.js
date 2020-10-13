@@ -35,12 +35,6 @@ const fir_db_url = 'https://rooted-test.firebaseio.com';
 const fir_project_id = 'rooted-test';
 const fir_storage_bucket = 'rooted-test.appspot.com';
 const fir_messaging_sender_id = '316478127099';
-var fir_storage_filename;
-if (is_live) {
-    fir_storage_filename = './rooted-f677e-7249c753c9f9.json';
-} else {
-    fir_storage_filename = './rooted-test-7d1b0827d760.json';
-}
 const fir_app_id = '1:316478127099:web:61ce489a39d6fdad02a95e';
 const fir_measurement_id = 'G-BGB70ZYWQV';
 
@@ -55,9 +49,16 @@ const s3_access_key = '';
 const s3_secret_key = '';
 const s3_bucket = '';
 
-const is_live = false;
+const is_live = true;
 const one_day = 86400000;
 const timeout = 72000000;
+
+var fir_storage_filename;
+if (is_live) {
+    fir_storage_filename = './rooted-f677e-7249c753c9f9.json';
+} else {
+    fir_storage_filename = './rooted-test-7d1b0827d760.json';
+}
 
 module.exports = {
     port: port,
