@@ -171,7 +171,14 @@ router.post('/leo', function(req, res) {
 
         getFirebaseFirStorageInstance(res, function(reference) {
             retrieveUserObject(uid, reference, function(error, data) {
-                if (error) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Email or password are invalid. Please try again."
+                });
+                
+                if (!data.user[0]) {
                     jwt.sign({ 
                         uid: uid 
                     }, 
