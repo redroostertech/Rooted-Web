@@ -178,7 +178,7 @@ router.post('/leo', function(req, res) {
                     "error_message": "Email or password are invalid. Please try again."
                 });
                 
-                if (!data.user[0]) {
+                if (typeof data.user[0] == 'undefined') {
                     jwt.sign({ 
                         uid: uid 
                     }, 
@@ -225,7 +225,7 @@ router.post('/leo', function(req, res) {
                             company_name: null,
                             phone_number_country_code: null,
                             phone_number_area_code: null,
-                            phone_number_string: phone_number_string,
+                            phone_number_string: null,
                             gender: null,
                             dob: null,
                             user_preferences: [0, 1, 2, 3],
@@ -234,47 +234,47 @@ router.post('/leo', function(req, res) {
                             last_known_checkin_ids: new Array(),
                         }
 
-                        getFirebaseFirStorageInstance(res, function(reference) {
-                            let refCollection = reference.collection('users');
-                            refCollection.add(userObject).then(function(docRef) {
-                                console.log("Document written with ID: ", docRef.id);
-                                retrieveUserObject(uid, reference, function(error, data) {
-                                    if (error) return res.status(200).json({
-                                        "status": 200,
-                                        "success": false,
-                                        "data": null,
-                                        "error_message": error.message
-                                    });
-            
-                                    res.status(200).json({
-                                        "status": 200,
-                                        "success": true,
-                                        "data": data,
-                                        "error_message": null
-                                    });
-                                });
-                            }).catch(function (error) {
-                                // arrayOfErrors.push(error.message);
-                                res.status(200).json({
+                        getFirebaseFirStorageInstance(res, function(ref) {
+                        let refCollection = ref.collection('users');
+                        refCollection.add(userObject).then(function(docRef) {
+                            console.log("Document written with ID: ", docRef.id);
+                            retrieveUserObject(uid, ref, function(error, data) {
+                                if (error) return res.status(200).json({
                                     "status": 200,
                                     "success": false,
                                     "data": null,
                                     "error_message": error.message
                                 });
+        
+                                res.status(200).json({
+                                    "status": 200,
+                                    "success": true,
+                                    "data": data,
+                                    "error_message": null
+                                });
+                            });
+                        }).catch(function (error) {
+                            res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
                             });
                         });
                     });
-                }
+                    });
+                } else {
 
-                data.user[0].email_address = email;
-                data.user[0].token = customToken;
-                
-                res.status(200).json({
-                    "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
-                });
+                    data.user[0].email_address = email;
+                    data.user[0].token = customToken;
+                    
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": data,
+                        "error_message": null
+                    });
+                }
             });
         });
     }
