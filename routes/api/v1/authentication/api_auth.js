@@ -160,29 +160,18 @@ router.post('/leo', function(req, res) {
         let full_name = req.body.full_name;
         let public_key_string = req.body.public_key_string;
         let private_key_encrypted_string = req.body.private_key_encrypted_string;
-        let id_token = req.body.id_token;
+        let uid = req.body.uid;
 
-        if (!email || !full_name || !id_token) return res.status(200).json({
+        if (!email || !full_name || !uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
-        getFirebaseAuthInstance(res, function(auth){ 
-            auth.signOut().then(function() {
-                // Build Firebase credential with the Google ID token.
-                var credential = auth.GoogleAuthProvider.credential(id_token);
-                auth.signInWithCredential(credential).then(function () {
-                    if (!auth.currentUser) return res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": "Sorry! Something went wrong. Please try again later." 
-                    });
-
-                    const uid = auth.currentUser.uid;
-
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveUserObject(uid, reference, function(error, data) {
+                if (error) {
                     jwt.sign({ 
                         uid: uid 
                     }, 
@@ -229,7 +218,7 @@ router.post('/leo', function(req, res) {
                             company_name: null,
                             phone_number_country_code: null,
                             phone_number_area_code: null,
-                            phone_number_string: null,
+                            phone_number_string: phone_number_string,
                             gender: null,
                             dob: null,
                             user_preferences: [0, 1, 2, 3],
@@ -267,15 +256,17 @@ router.post('/leo', function(req, res) {
                                 });
                             });
                         });
-
-                    })
-                }).catch(function (error) {
-                    res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": error.message
                     });
+                }
+
+                data.user[0].email_address = currentUser.email;
+                data.user[0].token = customToken;
+                
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
                 });
             });
         });
