@@ -110,6 +110,7 @@ router.post('/leo', function(req, res) {
                             card_on_file: false,
                             payment_info_id: new Array(),
                             last_known_checkin_ids: new Array(),
+                            login_type: 'EMAIL'
                         }
 
                         getFirebaseFirStorageInstance(res, function(reference) {
@@ -234,6 +235,7 @@ router.post('/leo', function(req, res) {
                             card_on_file: false,
                             payment_info_id: new Array(),
                             last_known_checkin_ids: new Array(),
+                            login_type: 'GOOGLE'
                         }
 
                         getFirebaseFirStorageInstance(res, function(ref) {
