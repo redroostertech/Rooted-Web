@@ -52,8 +52,7 @@ router.post('/eggman', function(req, res) {
                 data = req.body.data;
             }
 
-
-            console.log(data);
+            // console.log(data);
 
             if (!req.body.key || !req.body.uid) return res.status(200).json({
                 "status": 200,
@@ -2015,6 +2014,7 @@ function retrieveUserObject(uid, reference, completionHandler) {
                     });
                 },
                 account_type: function(callback) {
+                    // callback(null, null);
                     var accountTypes = new Array();
                     let prefCollection = reference.collection('account_roles');
                     prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
@@ -2039,8 +2039,9 @@ function retrieveUserObject(uid, reference, completionHandler) {
                     });
                 }, 
                 meetings: function(callback) {
+                    // callback(null, null);
                     var accountTypes = new Array();
-                    retrieveMeetings('meetings', userDoc.uid, moment().format(), reference, function(error, data) {
+                    retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
                         if (error) { 
                             console.log(error.message);
                             callback(error, accountTypes);
