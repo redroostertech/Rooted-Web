@@ -693,7 +693,7 @@ router.post('/eggman', function(req, res) {
                     refCollection.add(data).then(function(docRef) {
                         console.log("Document written with ID: ", docRef.id);
                         data.key = docRef.id;
-                        res.status(200).json({
+                        return es.status(200).json({
                             "status": 200,
                             "success": true,
                             "data": data,
@@ -701,7 +701,7 @@ router.post('/eggman', function(req, res) {
                         });
                     }).catch(function (error) {
                         // arrayOfErrors.push(error.message);
-                        res.status(200).json({
+                        return res.status(200).json({
                             "status": 200,
                             "success": false,
                             "data": null,
@@ -715,7 +715,7 @@ router.post('/eggman', function(req, res) {
                     refCollection.add(data).then(function(docRef) {
                         console.log("Document written with ID: ", docRef.id);
                         data.key = docRef.id;
-                        res.status(200).json({
+                        return res.status(200).json({
                             "status": 200,
                             "success": true,
                             "data": data,
@@ -723,7 +723,7 @@ router.post('/eggman', function(req, res) {
                         });
                     }).catch(function (error) {
                         // arrayOfErrors.push(error.message);
-                        res.status(200).json({
+                        return res.status(200).json({
                             "status": 200,
                             "success": false,
                             "data": null,
@@ -733,14 +733,14 @@ router.post('/eggman', function(req, res) {
                 }
 
                 reference.collection('draft_meetings').doc(meeting.key).set(data, { merge: true }).then(function() {
-                    res.status(200).json({
+                    return res.status(200).json({
                         "status": 200,
                         "success": true,
                         "data": data,
                         "error_message": null 
                     });
                 }).catch(function (error) {
-                    res.status(200).json({
+                    return res.status(200).json({
                         "status": 200,
                         "success": false,
                         "data": null,
