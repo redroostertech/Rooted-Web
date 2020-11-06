@@ -26,9 +26,28 @@ router.use(session(configs.appSession));
 
 var getOptions = { source: 'cache' };
 
+var activeFunctions = [
+    'email_registration',
+    'google_registration',
+    'email_login',
+    'session_check',
+    'forgot_password', 
+    'log_out', 'accept_meeting'
+]
+
 router.post('/leo', function(req, res) { 
     console.log(req.body);
     let action = req.body.action;
+
+    if (!activeFunctions.includes(action)) {
+        return res.status(404).json({
+            "status": 404,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+    }
+    
     if (action == 'email_registration') {
         let email = req.body.email;
         let password = req.body.password;
@@ -37,7 +56,7 @@ router.post('/leo', function(req, res) {
         let public_key_string = req.body.public_key_string;
         let private_key_encrypted_string = req.body.private_key_encrypted_string;
 
-        if (!email || !password || !full_name || !phone_number_string) return res.status(200).json({
+        if (!email || !password || !full_name || !phone_number_string || !public_key_string || !private_key_encrypted_string) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -46,7 +65,6 @@ router.post('/leo', function(req, res) {
 
         getFirebaseAuthInstance(res, function(auth){ 
             auth.signOut().then(function() {
-                
                 auth.createUserWithEmailAndPassword(email, password).then(function () {
                     if (!auth.currentUser) return res.status(200).json({
                         "status": 200,
@@ -56,6 +74,8 @@ router.post('/leo', function(req, res) {
                     });
 
                     const uid = auth.currentUser.uid;
+
+                    console.log(uid); 
 
                     jwt.sign({ 
                         uid: uid 
@@ -113,7 +133,10 @@ router.post('/leo', function(req, res) {
                             login_type: 'EMAIL'
                         }
 
+                        console.log(userObject);
+
                         getFirebaseFirStorageInstance(res, function(reference) {
+                            console.log(userObject);
                             let refCollection = reference.collection('users');
                             refCollection.add(userObject).then(function(docRef) {
                                 console.log("Document written with ID: ", docRef.id);
@@ -318,6 +341,13 @@ router.post('/leo', function(req, res) {
                                 "data": null,
                                 "error_message": error.message
                             });
+
+                            if (!data.user[0]) return res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": "User does not exist."
+                            }); 
     
                             data.user[0].email_address = currentUser.email;
                             data.user[0].token = customToken;

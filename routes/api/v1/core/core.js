@@ -33,6 +33,26 @@ const token = jwt.sign(payload, 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF');
 
 var getOptions = { source: 'cache' };
 
+var activeFunctions = [
+    'update_user',
+    'retrieve_user_for_id',
+    'save_meeting',
+    'retrieve_upcoming_meetings_for_user',
+    'retrieve_sent_meetings_for_user', 
+    'retrieve_meeting_for_id', 'accept_meeting', 
+    'decline_meeting',
+    'update_meeting', 
+    'cancel_meeting',
+    'delete_meeting',
+    'create_workspace', 
+    'send_activity', 
+    'get_activity_for_object', 
+    'retrieve_meeting_drafts_for_user',
+    'save_draft', 
+    'update_draft', 
+    'delete_draft'
+]
+
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
 router.use(express.static(configs.basePublicPath, { maxage: configs.oneDay * 21 }));
@@ -41,6 +61,16 @@ router.use(session(configs.appSession));
 router.post('/eggman', function(req, res) { 
     console.log(req.body);
     let action = req.body.action;
+    
+    if (!activeFunctions.includes(action)) {
+        return res.status(404).json({
+            "status": 404,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+    }
+
     if (action == 'update_user') {
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('users');
@@ -693,7 +723,7 @@ router.post('/eggman', function(req, res) {
                     refCollection.add(data).then(function(docRef) {
                         console.log("Document written with ID: ", docRef.id);
                         data.key = docRef.id;
-                        return es.status(200).json({
+                        return res.status(200).json({
                             "status": 200,
                             "success": true,
                             "data": data,
