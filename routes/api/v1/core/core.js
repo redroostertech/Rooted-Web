@@ -1357,7 +1357,7 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
         }
 
         let data = {
-            "meetings": meetings.length > 0 ? meetings.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : meetings
+            "meetings": meetings.length > 0 ? meetings.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : meetings
         }
 
         completionHandler(err, data);
@@ -1496,7 +1496,7 @@ function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, r
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
+                "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
             }
             completionHandler(err, data);
         });
@@ -1631,7 +1631,7 @@ function retrieveMeetingsById(collection, id, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
+                "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
             }
             completionHandler(err, data);
         });
@@ -1756,7 +1756,7 @@ function retrieveDraftMeetingById(collection, id, reference, completionHandler) 
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
+                "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
             }
             completionHandler(err, data);
         });
