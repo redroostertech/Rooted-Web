@@ -298,8 +298,8 @@ router.post('/eggman', function(req, res) {
             "error_message": "Something went wrong. Please try again."
         });
 
-        var startDate = moment().subtract(7, 'days').format();
-        var endDate = moment().add(1, 'days').format();
+        var startDate = moment().subtract(30, 'days').format();
+        var endDate = moment().add(30, 'days').format();
 
         getFirebaseFirStorageInstance(res, function(reference) {
             retrieveMeetings('meetings', req.body.uid, startDate, endDate, reference, function(error, data) {
@@ -1357,7 +1357,7 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
         }
 
         let data = {
-            "meetings": meetings.sort((a, b) => moment(b.meeting_date.end_date) - moment(a.meeting_date.end_date))
+            "meetings": meetings.length > 0 ? meetings.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : meetings
         }
 
         completionHandler(err, data);
@@ -1496,7 +1496,7 @@ function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, r
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.sort((a, b) => moment(b.meeting_date.end_date) - moment(a.meeting_date.end_date))
+                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
             }
             completionHandler(err, data);
         });
@@ -1631,7 +1631,7 @@ function retrieveMeetingsById(collection, id, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.sort((a, b) => moment(b.meeting_date.end_date) - moment(a.meeting_date.end_date))
+                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
             }
             completionHandler(err, data);
         });
@@ -1693,8 +1693,9 @@ function retrieveDraftMeetings(collection, uid, reference, completionHandler) {
             });
         }, function (err) {
             if (err) return completionHandler(err, null);
+            console.log(users.length);
             let data = {
-                "meetings": users.sort((a, b) => moment(b.meeting_date.end_date) - moment(a.meeting_date.end_date))
+                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)) : users
             }
             completionHandler(err, data);
         });
@@ -1755,7 +1756,7 @@ function retrieveDraftMeetingById(collection, id, reference, completionHandler) 
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users.sort((a, b) => moment(b.meeting_date.end_date) - moment(a.meeting_date.end_date))
+                "meetings": users.length > 0 ? users.sort((a, b) => new Date(b.meeting_date.end_date_timestamp) - new Date(a.meeting_date.end_date_timestamp)) : users
             }
             completionHandler(err, data);
         });
