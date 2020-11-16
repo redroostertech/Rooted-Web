@@ -1357,7 +1357,7 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
         }
 
         let data = {
-            "meetings": meetings
+            "meetings": meetings.sort((a, b) => b - a)
         }
 
         completionHandler(err, data);
@@ -1496,7 +1496,7 @@ function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, r
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users
+                "meetings": users.sort((a, b) => b - a)
             }
             completionHandler(err, data);
         });
@@ -1631,7 +1631,7 @@ function retrieveMeetingsById(collection, id, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users
+                "meetings": users.sort((a, b) => b - a)
             }
             completionHandler(err, data);
         });
@@ -1694,7 +1694,7 @@ function retrieveDraftMeetings(collection, uid, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users
+                "meetings": users.sort((a, b) => b - a)
             }
             completionHandler(err, data);
         });
@@ -1755,7 +1755,7 @@ function retrieveDraftMeetingById(collection, id, reference, completionHandler) 
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users
+                "meetings": users.sort((a, b) => b - a)
             }
             completionHandler(err, data);
         });
