@@ -256,15 +256,20 @@ router.post('/eggman', function(req, res) {
         if (!req.body.date) {
             startDate = moment().subtract(1, 'days').format();
         } else {
-            startDate = moment(req.body.date).subtract(1, 'days').format();
+            startDate = moment(req.body.date).subtract(0, 'days').format();
         }
 
         var endDate;
         if (!req.body.endDate) {
             endDate = moment().add(1, 'days').format();
         } else {
-            endDate = moment(req.body.endDate).add(1, 'days').format();
+            endDate = moment(req.body.endDate).add(0, 'days').format();
         }
+
+        console.log(`
+        Start date: ${startDate}\n
+        End date: ${endDate}\n
+        `);
 
         getFirebaseFirStorageInstance(res, function(reference) {
             retrieveUpcomingMeetings('meetings', req.body.uid, startDate, endDate, reference, function(error, data) {
