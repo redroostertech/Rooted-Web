@@ -34,23 +34,24 @@ const token = jwt.sign(payload, 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF');
 var getOptions = { source: 'cache' };
 
 var activeFunctions = [
-    'update_user',
-    'retrieve_user_for_id',
-    'save_meeting',
-    'retrieve_upcoming_meetings_for_user',
-    'retrieve_sent_meetings_for_user', 
-    'retrieve_meeting_for_id', 'accept_meeting', 
-    'decline_meeting',
-    'update_meeting', 
+    'accept_meeting', 
     'cancel_meeting',
-    'delete_meeting',
     'create_workspace', 
-    'send_activity', 
+    'decline_meeting',
+    'delete_meeting',
+    'delete_draft',
     'get_activity_for_object', 
     'retrieve_meeting_drafts_for_user',
-    'save_draft', 
-    'update_draft', 
-    'delete_draft'
+    'retrieve_meeting_for_id',
+    'retrieve_sent_meetings_for_user',
+    'retrieve_upcoming_meetings_for_user',
+    'retrieve_user_for_id',
+    'save_draft',
+    'save_meeting',
+    'send_activity',
+    'update_draft',
+    'update_meeting', 
+    'update_user',
 ]
 
 router.use(bodyParser.json({ limit: '500mb' }));
@@ -175,6 +176,7 @@ router.post('/eggman', function(req, res) {
         
         data.meeting_participants_ids = [data.owner_id];
         data.createdAt = new Date();
+        // data.createdAtString = moment().format();
 
         console.log('\n\nFinished Data\n');
         console.log(data);
@@ -279,7 +281,16 @@ router.post('/eggman', function(req, res) {
                     "data": null,
                     "error_message": error.message
                 });
-
+                console.log(`
+                    Response is: ${
+                        {
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        }   
+                    }
+                `)
                 res.status(200).json({
                     "status": 200,
                     "success": true,
