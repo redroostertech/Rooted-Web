@@ -283,12 +283,7 @@ router.post('/eggman', function(req, res) {
                 });
                 console.log(`
                     Response is: ${
-                        {
-                            "status": 200,
-                            "success": true,
-                            "data": data,
-                            "error_message": null
-                        }   
+                        data.meetings.length
                     }
                 `)
                 res.status(200).json({
