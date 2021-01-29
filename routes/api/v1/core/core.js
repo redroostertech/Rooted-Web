@@ -59,6 +59,61 @@ router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimi
 router.use(express.static(configs.basePublicPath, { maxage: configs.oneDay * 21 }));
 router.use(session(configs.appSession));
 
+router.get('/imessage', function(req, res) {
+    console.log(req.params);
+    let action = req.params.action;
+
+    if (action == 'retrieve_upcoming_meetings_for_user') {
+        if (!req.body.uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        var startDate; 
+        if (!req.params.date) {
+            startDate = moment().subtract(1, 'days').format();
+        } else {
+            startDate = moment(req.params.date).subtract(0, 'days').format();
+        }
+
+        var endDate;
+        if (!req.body.endDate) {
+            endDate = moment().add(1, 'days').format();
+        } else {
+            endDate = moment(req.params.endDate).add(0, 'days').format();
+        }
+
+        console.log(`
+        Start date: ${startDate}\n
+        End date: ${endDate}\n
+        `);
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveUpcomingMeetings('meetings', req.params.uid, startDate, endDate, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+                console.log(`
+                    Response is: ${
+                        data.meetings.length
+                    }
+                `)
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+});
+
 router.post('/eggman', function(req, res) { 
     console.log(req.body);
     let action = req.body.action;
