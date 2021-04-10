@@ -390,7 +390,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.calendar_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
