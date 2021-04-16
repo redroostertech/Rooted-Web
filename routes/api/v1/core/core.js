@@ -36,22 +36,24 @@ var getOptions = { source: 'cache' };
 var activeFunctions = [
     'accept_meeting', 
     'cancel_meeting',
+    'create_event_invite',
     'create_workspace', 
     'decline_meeting',
     'delete_meeting',
     'delete_draft',
+    'delete_event_invite',
     'get_activity_for_object', 
-    'retrieve_meeting_drafts_for_user',
-    'retrieve_meeting_for_id',
-    'retrieve_sent_meetings_for_user',
-    'retrieve_upcoming_meetings_for_user',
-    'retrieve_user_for_id',
+    'retrieve_meeting',
+    'retrieve_meeting_drafts',
+    'retrieve_sent_meetings',
+    'retrieve_upcoming_meetings',
+    'retrieve_user',
     'save_draft',
     'save_meeting',
     'send_activity',
     'update_draft',
     'update_meeting', 
-    'update_user',
+    'update_user',    
 ]
 
 router.use(bodyParser.json({ limit: '500mb' }));
@@ -127,6 +129,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
+    // MARK: - Users
     if (action == 'update_user') {
         getFirebaseFirStorageInstance(res, function(reference) {
             let refCollection = reference.collection('users');
@@ -181,7 +184,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'retrieve_user_for_id') {
+    if (action == 'retrieve_user') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -215,6 +218,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
+    // MARK: - Meetings
     if (action == 'save_meeting') {
         // let data = JSON.parse(JSON.parse(req.body.data));
         let data = JSON.parse(req.body.data);
@@ -228,7 +232,8 @@ router.post('/eggman', function(req, res) {
             "data": null,
             "error_message": "1 or more parameters are missing. Please try again."
         });
-        
+
+        data._id = randomstring.generate();
         data.meeting_participants_ids = [data.owner_id];
         data.createdAt = new Date();
         // data.createdAtString = moment().format();
@@ -301,7 +306,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'retrieve_upcoming_meetings_for_user') {
+    if (action == 'retrieve_upcoming_meetings') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -351,7 +356,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'retrieve_sent_meetings_for_user') {
+    if (action == 'retrieve_sent_meetings') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -381,7 +386,7 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'retrieve_meeting_for_id') {
+    if (action == 'retrieve_meeting') {
         if (!req.body.meetingId) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -651,89 +656,8 @@ router.post('/eggman', function(req, res) {
         });
     }
 
-    if (action == 'create_workspace') { 
-
-    }
-
-    if (action == 'send_activity') {
-        let data = req.body.data;
-
-        if (!data.sender_id || !data.object_id || !data.activity_type) return res.status(200).json({
-            "status": 200,
-            "success": false,
-            "data": null,
-            "error_message": "1 or more parameters are missing. Please try again."
-        });
-
-        switch (data.activity_type) {
-            case 0:
-                data.collection = 'meetings'
-                data.description = 'Meeting participant accepted meeting'
-            case 1:
-                data.collection = 'meetings'
-                data.description = 'Meeting participant declined meeting'
-            case 1:
-                data.collection = 'meetings'
-                data.description = 'Meeting participant is tentative'
-        }
-
-        data.createdAt = new Date();
-        
-        getFirebaseFirStorageInstance(res, function(reference) {
-            let refCollection = reference.collection('activity');
-            refCollection.add(data).then(function(docRef) {
-                console.log("Document written with ID: ", docRef.id);
-                data.key = docRef.id;
-                res.status(200).json({
-                    "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
-                });
-            }).catch(function (error) {
-                // arrayOfErrors.push(error.message);
-                res.status(200).json({
-                    "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": error.message
-                });
-            });
-        });
-    }
-
-    if (action == 'get_activity_for_object') {
-        let data = req.body.data;
-
-        if (!data.object_id) return res.status(200).json({
-            "status": 200,
-            "success": false,
-            "data": null,
-            "error_message": "1 or more parameters are missing. Please try again."
-        });
-
-        getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveActivityForId(req.body.object_id, reference, function(error, data) {
-                if (error) return res.status(200).json({
-                    "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": error.message
-                });
-
-                res.status(200).json({
-                    "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
-                });
-            });
-        });
-        
-    }
-
-    // Drafts
-    if (action == 'retrieve_meeting_drafts_for_user') {
+    // MARK: - Drafts
+    if (action == 'retrieve_meeting_drafts') {
         if (!req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -959,6 +883,252 @@ router.post('/eggman', function(req, res) {
                     });
                 });
             });
+        });
+    }
+
+    // MARK: - Event Invites
+    if (action == 'create_event_invite') {
+        // let data = JSON.parse(JSON.parse(req.body.data));
+        let data = JSON.parse(req.body.data);
+        console.log('Request Body Data');
+        console.log(data);
+
+        if (!data.meeting_id || !data.recipient_id || !data.sender_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        data._id = randomstring.generate();
+        data.createdAt = new Date();
+
+        console.log('\n\nFinished Data\n');
+        console.log(data);
+
+        // Get the additional information for user
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById('meetings', data.meeting_id, reference, function(error, results) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                if (results.meetings.length === 0) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Meeting does not exist."
+                });
+         
+                async.parallel({
+                    save: function(callback) {
+                        let refCollection = reference.collection('event_invites');
+                        refCollection.add(data).then(function(docRef) {
+                            console.log("Document written with ID: ", docRef.id);
+                            data.key = docRef.id;
+                            callback(null, data);
+                        }).catch(function (e) {
+                            if (e) {
+                                console.log("Save error");
+                                console.log(e);
+                                return callback(e, null); 
+                            } 
+                            return
+                        });
+                    },
+                    update_meeting: function(callback) {
+                        updateMeetingForId('meetings', data.sender_id, data.meeting_id, reference, function(e, r) {
+                            if (e) return callback(e, null); 
+                            callback(null, r);
+                        });
+                    },
+                }, function(err, r) {
+                    if (err) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": err.message
+                    });
+
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "eventInvite": [ r.save ],
+                            "updatedMeeting": r.update_meeting
+                        },
+                        "error_message": null
+                    });
+                });
+            });
+
+        });
+    }
+
+    if (action == 'delete_event_invite') {
+        // let data = JSON.parse(JSON.parse(req.body.data));
+        let data = JSON.parse(req.body.data);
+        console.log('Request Body Data');
+        console.log(data);
+
+        if (!data.invite_id || !data.sender_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        // Get the additional information for user
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveEventInvitesById('event_invites', data.invite_id, reference, function(error, result) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var invite = result.invites[0];
+
+                if (invite.sender_id !== data.sender_id && invite.meeting_id !== data.meeting_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You do not have the permission to delete this invite." 
+                });
+
+                async.parallel({
+                    delete: function(callback) {
+                        reference.collection('event_invites').doc(invite.key).delete().then(function() {
+                            callback(null, {
+                                "status": 200,
+                                "success": true,
+                                "data": {
+                                    "message": "Meeting was deleted.",
+                                    "deleted_message": data
+                                },
+                                "error_message": null
+                            });
+                        }).catch(function(error) {
+                            return callback(error, null); 
+                        });
+                    },
+                    update_meeting: function(callback) {
+                        removeParticipantForMeeting('meetings', req.body.recipient_id, invite.meeting_id, reference, function(error, data) {
+                            if (error) return callback(error, null); 
+                            callback(null, data);
+                        });
+                    },
+                }, function(error, results) {
+                    if (error) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "eventInvite": [ results.save ],
+                            "updatedMeeting": results.update_meeting
+                        },
+                        "error_message": null
+                    });
+                });
+            });
+        });
+    }
+
+    // MARK: - Activity
+    if (action == 'send_activity') {
+        let data = req.body.data;
+
+        if (!data.sender_id || !data.object_id || !data.activity_type) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        switch (data.activity_type) {
+            case 0:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant accepted meeting'
+            case 1:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant declined meeting'
+            case 1:
+                data.collection = 'meetings'
+                data.description = 'Meeting participant is tentative'
+        }
+
+        data.createdAt = new Date();
+        
+        getFirebaseFirStorageInstance(res, function(reference) {
+            let refCollection = reference.collection('activity');
+            refCollection.add(data).then(function(docRef) {
+                console.log("Document written with ID: ", docRef.id);
+                data.key = docRef.id;
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            }).catch(function (error) {
+                // arrayOfErrors.push(error.message);
+                res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+            });
+        });
+    }
+
+    if (action == 'get_activity_for_object') {
+        let data = req.body.data;
+
+        if (!data.object_id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveActivityForId(req.body.object_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+        
+    }
+
+    // MARK: - Workspaces
+    if (action == 'create_workspace') { 
+        res.status(200).json({
+            "status": 200,
+            "success": true,
+            "data": null,
+            "error_message": "Workspace creation is currently unavailable."
         });
     }
 
@@ -2066,7 +2236,7 @@ function removeParticipantForMeeting(collection, data, id, reference, completion
 function retrieveActivityForId(id, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection('activity');
-    refCollection.where('object_id', '==', id).get(getOptions).then(function(querySnapshot) {
+    refCollection.where('_id', '==', id).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
@@ -2312,6 +2482,104 @@ function retrieveUserObject(uid, reference, completionHandler) {
             let data = {
                 "uid": uid,
                 "user": users
+            }
+            completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function retrieveEventInvitesById(collection, id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection(collection);
+    refCollection.where('_id', '==', id).get(getOptions).then(function(querySnapshot) {
+        var users = new Array();
+
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
+            userDoc.key = doc.id;
+
+            // Get the additional information for user
+            async.parallel({
+                sender: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('uid','==', userDoc.sender_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                },
+                recipient: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.recipient_id, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.sender) {
+                    userDoc.sender = results.sender
+                }
+
+                if (results.recipient) {
+                    userDoc.recipient = results.recipient;
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "invites": users
             }
             completionHandler(err, data);
         });
