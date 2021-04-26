@@ -138,7 +138,7 @@ router.post('/leo', function(req, res) {
                         getFirebaseFirStorageInstance(res, function(reference) {
                             console.log(userObject);
                             let refCollection = reference.collection('users');
-                            refCollection.add(userObject).then(function(docRef) {
+                            refCollection.doc(uid).set(userObject).then(function(docRef) {
                                 console.log("Document written with ID: ", docRef.id);
                                 retrieveUserObject(auth.currentUser.uid, reference, function(error, data) {
                                     if (error) return res.status(200).json({
@@ -263,7 +263,7 @@ router.post('/leo', function(req, res) {
 
                         getFirebaseFirStorageInstance(res, function(ref) {
                             let refCollection = ref.collection('users');
-                            refCollection.add(userObject).then(function(docRef) {
+                            refCollection.doc(uid).set(userObject).then(function(docRef) {
                                 console.log("Document written with ID: ", docRef.id);
                                 retrieveUserObject(uid, ref, function(error, data) {
                                     if (error) return res.status(200).json({

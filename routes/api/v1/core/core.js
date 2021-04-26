@@ -2353,7 +2353,7 @@ function sendText(to, withSubject, textPart, htmlPart, customID) {
 function retrieveUserObject(uid, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection('users');
-    refCollection.where('uid','==', uid).get(getOptions).then(function(querySnapshot) {
+    refCollection.doc(uid).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
