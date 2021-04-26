@@ -49,7 +49,7 @@ const s3_access_key = '';
 const s3_secret_key = '';
 const s3_bucket = '';
 
-const is_live = true;
+const is_live = false;
 const one_day = 86400000;
 const timeout = 72000000;
 
