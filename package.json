@@ -52,7 +52,7 @@
     "rxjs": "^6.5.2",
     "socket.io": "^2.2.0",
     "twilio": "^3.31.1",
-    "underscore": "^1.8.3",
+    "underscore": "^1.12.1",
     "xoauth2": "*",
     "zoomus": "^0.1.4"
   },
