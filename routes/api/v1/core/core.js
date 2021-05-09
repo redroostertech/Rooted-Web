@@ -387,7 +387,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'retrieve_meeting') {
-        if (!req.body.meetingId) return res.status(200).json({
+        if (!req.body.meeting_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -395,7 +395,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById('meetings', req.body.meetingId, reference, function(error, data) {
+            retrieveMeetingsByCalendarId('meetings', req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
