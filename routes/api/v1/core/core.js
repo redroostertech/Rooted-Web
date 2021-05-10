@@ -428,8 +428,13 @@ router.post('/eggman', function(req, res) {
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
+        var data = {
+            meeting_participants_ids: [
+                req.body.user_id
+            ]
+        }
         getFirebaseFirStorageInstance(res, function(reference) {
-            updateMeetingForId('meetings', req.body.user_id, req.body.meeting_id, reference, function(error, data) {
+            updateMeetingForCalendarId('meetings', data, req.body.meeting_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -475,7 +480,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'update_meeting') {
-        if (!req.body.meeting_id || !req.body.user_id || !req.body.data) return res.status(200).json({
+        if (!req.body.data) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -483,7 +488,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById('meetings', req.body.meeting_id, reference, function(error, data) {
+            updateObject('meetings', req.body.data.key, req.body.data, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -491,44 +496,13 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                var meeting = data.meetings[0];
-
-                if (!meeting) return res.status(200).json({
+                res.status(200).json({
                     "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": "A meeting was not found for provided id. Please try again."
-                });
-
-                if (meeting.user_id !== req.body.owner_id) return res.status(200).json({
-                    "status": 200,
-                    "success": false,
-                    "data": null,
-                    "error_message": "You do not have the permission to delete this meeting."
-                });
-
-                let updateData = JSON.parse(req.body.data);
-                console.log("Update data");
-                console.log(updateData);
-                Object.keys(updateData).forEach(function(key) {
-                    meeting[key] = updateData[key];
-                });
-                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
-                    res.status(200).json({
-                        "status": 200,
-                        "success": true,
-                        "data": {
-                            "meeting_id": req.body.meeting_id
-                        },
-                        "error_message": null 
-                    });
-                }).catch(function (error) {
-                    res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": error.message
-                    });
+                    "success": true,
+                    "data": {
+                        "didProcessComplete": true
+                    },
+                    "error_message": null 
                 });
             });
         });
@@ -2588,4 +2562,58 @@ function retrieveEventInvitesById(collection, id, reference, completionHandler) 
     });  
 }
 
+let checker = (arr, target) => target.every(v => arr.includes(v));
+
+function updateMeetingForCalendarId(collection, data, id, reference, completionHandler) {
+    // Get the original user data
+    let refCollection = reference.collection(collection);
+    refCollection.where('calendar_id', '==', id).get(getOptions).then(function(querySnapshot) {
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var object = new Object();
+
+            // Update Accepted Meeting Participants
+            var meetingParticipantsIds = doc.data().meeting_participants_ids;
+            if (meetingParticipantsIds != undefined && data.meeting_participants_ids != undefined) {
+                if (data.meeting_participants_ids.length >= meetingParticipantsIds) {
+
+                }
+                else {
+
+                }
+                let array3 = meetingParticipantsIds.concat(data.meeting_participants_ids);
+                array3 = [...new Set([...meetingParticipantsIds,...data.meeting_participants_ids])]
+                object['meeting_participants_ids'] = meetingParticipantsId;
+            } 
+
+            // Update Declined Meeting Participants
+            var declinedMeetingPaticipantsIds = doc.data().decline_meeting_participants_ids;
+            console.log(typeof declinedMeetingPaticipantsIds !== 'undefined');
+            if (typeof declinedMeetingPaticipantsIds !== 'undefined') {
+                object['decline_meeting_participants_ids'] = declinedMeetingPaticipantsIds.filter(function(participantId) {
+                    return participantId !== data
+                });
+            }
+            
+            refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
+                completion();
+            }).catch(function (error) {
+                completionHandler(error, null);
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            retrieveMeetingsById(id, reference, completionHandler);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function updateObject(collection, key, object, reference, completionHandler) {
+    let refCollection = reference.collection(collection);
+    refCollection.doc(doc.id).set(object, { merge: true }).then(function() {
+        completion();
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });
+}
 module.exports = router;
