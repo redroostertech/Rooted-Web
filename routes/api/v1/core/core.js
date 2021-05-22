@@ -32,6 +32,10 @@ const payload = {
 const token = jwt.sign(payload, 'jtNg8JEVVPJKCUy40U8qRUktJ37fuzwBglQF');
 
 var getOptions = { source: 'cache' };
+var MeetingStatus = {
+    active: 0,
+    cancelled: 1
+}
 
 var activeFunctions = [
     'accept_meeting', 
@@ -43,6 +47,7 @@ var activeFunctions = [
     'delete_draft',
     'delete_event_invite',
     'get_activity_for_object', 
+    'invite_contact',
     'retrieve_meeting',
     'retrieve_meeting_drafts',
     'retrieve_sent_meetings',
@@ -51,6 +56,7 @@ var activeFunctions = [
     'save_draft',
     'save_meeting',
     'send_activity',
+    'uninvite_contact',
     'update_draft',
     'update_meeting', 
     'update_user',    
@@ -201,6 +207,7 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
+                console.log(data);
                 if (data.user.length === 0) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -235,6 +242,7 @@ router.post('/eggman', function(req, res) {
 
         data._id = randomstring.generate();
         data.meeting_participants_ids = [data.owner_id];
+        data.meeting_status_id = MeetingStatus.active;
         data.createdAt = new Date();
         // data.createdAtString = moment().format();
 
@@ -421,20 +429,15 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'accept_meeting') {
-        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
+        if (!req.body.calendar_id || !req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
-        var data = {
-            meeting_participants_ids: [
-                req.body.user_id
-            ]
-        }
         getFirebaseFirStorageInstance(res, function(reference) {
-            updateMeetingForCalendarId('meetings', data, req.body.meeting_id, reference, function(error, data) {
+            retrieveUserObject(req.body.uid, reference, function(error, userResults) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -442,18 +445,115 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                res.status(200).json({
+                let user = userResults.user[0];
+
+                if (user == undefined) return res.status(200).json({
                     "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
+                    "success": false,
+                    "data": null,
+                    "error_message": "User does not exist."
+                });
+
+                retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                    if (error) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+
+                    var meeting = data.meetings[0];
+
+                    if (!meeting) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": "A meeting was not found for provided id. Please try again."
+                    });
+
+                    meeting.owner = null;
+                    meeting.participants = null;
+                    meeting.declined_participants = null;
+
+                    var meetingParticipants = meeting.meeting_participants_ids;
+                    var meetingInvitePhoneNumbers = meeting.meeting_invite_phone_numbers;
+                    var declineMeetingParticipants = meeting.decline_meeting_participants_ids;
+
+                    if (meetingParticipants == undefined) {
+                        meetingParticipants = new Array();
+                    }
+
+                    if (meetingInvitePhoneNumbers == undefined) {
+                        meetingInvitePhoneNumbers = new Array();
+                    }
+
+                    if (!meeting.is_meeting_public) {
+                        if (!meetingParticipants.includes(req.body.uid)) {
+                            meetingParticipants.push(req.body.uid);
+                            meetingInvitePhoneNumbers.push({
+                                email: user.email_address,
+                                fullName: user.full_name,
+                                phoneNumber: user.phone_number_string 
+                            });
+                        }
+                        else {
+                            res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": "You have already accepted an invite to this event."
+                            }); 
+                        }
+                    }
+                    else {
+                        if (meetingInvitePhoneNumbers.includes(function(invite) {
+                            return invite.fullName == user.full_name 
+                                || invite.email == user.email_address
+                                || invite.phoneNumber == user.phone_number_string
+                            })
+                        ) {
+                            meetingParticipants.push(req.body.uid);
+                        }
+                        else {
+                            res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": "You have to be invited to the event to accept and invite."
+                            }); 
+                        }
+                    }
+
+                    meeting.decline_meeting_participants_ids = declineMeetingParticipants.filter(function(participantId) {
+                        return participantId !== req.body.uid
+                    });
+                    meeting.meeting_participants_ids = meetingParticipants;
+                    meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
+
+                    reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": {
+                                "meeting": meeting
+                            },
+                            "error_message": null 
+                        });
+                    }).catch(function (error) {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+                    });
                 });
             });
         });
     }
 
     if (action == 'decline_meeting') {
-        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
+        if (!req.body.calendar_id || !req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -461,7 +561,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            removeParticipantForMeeting('meetings', req.body.user_id, req.body.meeting_id, reference, function(error, data) {
+            retrieveUserObject(req.body.uid, reference, function(error, userResults) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -469,11 +569,81 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                res.status(200).json({
+                let user = userResults.user[0];
+
+                if (user == undefined) return res.status(200).json({
                     "status": 200,
-                    "success": true,
-                    "data": data,
-                    "error_message": null
+                    "success": false,
+                    "data": null,
+                    "error_message": "User does not exist."
+                });
+
+                retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                    if (error) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+
+                    var meeting = data.meetings[0];
+
+                    if (!meeting) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": "A meeting was not found for provided id. Please try again."
+                    });
+
+                    meeting.owner = null;
+                    meeting.participants = null;
+                    meeting.declined_participants = null;
+
+                    var meetingParticipants = meeting.meeting_participants_ids;
+                    var meetingInvitePhoneNumbers = meeting.meeting_invite_phone_numbers;
+                    var declineMeetingParticipants = meeting.decline_meeting_participants_ids;
+
+                    if (declineMeetingParticipants == undefined) {
+                        declineMeetingParticipants = new Array();
+                    }
+
+                    if (!declineMeetingParticipants.includes(req.body.uid)) {
+                        declineMeetingParticipants.push(req.body.uid);
+                    }
+                    else {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": "You have already declined the invite to this event."
+                        }); 
+                    }
+
+                    meeting.decline_meeting_participants_ids = declineMeetingParticipants;
+                    meeting.meeting_participants_ids = meetingParticipants.filter(function(participantId) {
+                        return participantId !== req.body.uid
+                    });
+                    meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers.filter(function(invite) {
+                        return invite.email !== user.email_address && invite.fullName !== user.full_name
+                    });
+
+                    reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": {
+                                "meeting": meeting
+                            },
+                            "error_message": null 
+                        });
+                    }).catch(function (error) {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+                    });
                 });
             });
         });
@@ -509,7 +679,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'cancel_meeting') {
-        if (!req.body.meeting_id || !req.body.user_id) return res.status(200).json({
+        if (!req.body.calendar_id || !req.body.user_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -517,7 +687,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById('meetings', req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -526,6 +696,8 @@ router.post('/eggman', function(req, res) {
                 });
 
                 var meeting = data.meetings[0];
+                meeting.owner = null;
+                meeting.participants = null;
 
                 if (!meeting) return res.status(200).json({
                     "status": 200,
@@ -541,7 +713,7 @@ router.post('/eggman', function(req, res) {
                     "error_message": "You do not have the permission to delete this meeting."
                 });
 
-                meeting['meeting_status_id'] = 1;
+                meeting.meeting_status_id = 1;
                 reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
 
                     meeting.participants.forEach(function(participant) {
@@ -549,11 +721,10 @@ router.post('/eggman', function(req, res) {
                             "Email": participant.email_address,
                             "Name": participant.full_name,
                         }]
-                        var title = "CANCELLED ROOTED MEETING: " + meeting.meeting_name + " On July 23,2020 @ 10:30 AM"
+                        var title = "CANCELLED ROOTED MEETING: " + meeting.meeting_name + " on " + moment().format();
                         var html = "<!DOCTYPE html><html xmlns:v='urn:schemas-microsoft-com:vml' xmlns:o='urn:schemas-microsoft-com:office:office'><head><meta charset='utf8'><meta http-equiv='x-ua-compatible' content='ie=edge'><meta name='viewport' content='width=device-width, initial-scale=1'><meta name='x-apple-disable-message-reformatting'><title>CANCELLED ROOTED MEETING: " + meeting.meeting_name + " On July 23,2020 @ 10:30 AM</title><!--[if mso]> <xml> <o:OfficeDocumentSettings> <o:PixelsPerInch>96</o:PixelsPerInch> </o:OfficeDocumentSettings> </xml><style>table{border-collapse:collapse}td,th,div,p,a,h1,h2,h3,h4,h5,h6{font-family:'Segoe UI',Arial,sans-serif;mso-line-height-rule:exactly}</style><![endif]--><style>.hover-bg-brand-600:hover{background-color:#0047c3 !important}.hover-text-brand-700:hover{color:#003ca5 !important}.hover-underline:hover{text-decoration:underline !important}@media screen{img{max-width:100%}.all-font-sans{font-family:-apple-system,'Segoe UI',sans-serif !important}}@media (max-width: 640px){u~div .wrapper{min-width:100vw}.sm-border-none{border-style:none !important}.sm-block{display:block !important}.sm-table{display:table !important}.sm-table-caption{display:table-caption !important}.sm-table-footer-group{display:table-footer-group !important}.sm-table-header-group{display:table-header-group !important}.sm-h-16{height:16px !important}.sm-h-40{height:40px !important}.sm-mx-auto{margin-left:auto !important;margin-right:auto !important}.sm-mb-8{margin-bottom:8px !important}.sm-mt-16{margin-top:16px !important}.sm-mb-16{margin-bottom:16px !important}.sm-mt-24{margin-top:24px !important}.sm-p-0{padding:0 !important}.sm-py-16{padding-top:16px !important;padding-bottom:16px !important}.sm-px-16{padding-left:16px !important;padding-right:16px !important}.sm-py-24{padding-top:24px !important;padding-bottom:24px !important}.sm-pl-0{padding-left:0 !important}.sm-pb-8{padding-bottom:8px !important}.sm-pr-20{padding-right:20px !important}.sm-pt-24{padding-top:24px !important}.sm-text-center{text-align:center !important}.sm-text-14{font-size:14px !important}.sm-w-full{width:100% !important}.sm-table-header-group{display:table-header-group !important}.sm-table-footer-group{display:table-footer-group !important}.sm-table-caption{display:table-caption !important}}</style></head><body lang='en' style='margin: 0; padding: 0; width: 100%; word-break: break-word; -webkit-font-smoothing: antialiased; background-color: #ffffff;'><div style='display: none; line-height: 0; font-size: 0;'>CANCELLED ROOTED MEETING: " + meeting.meeting_name + " On July 23,2020 @ 10:30 AM&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj; &#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj; &#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;&zwnj;&#160;</div><table class='wrapper all-font-sans' style='width: 100%;' cellpadding='0' cellspacing='0' role='presentation'><tr><td align='center' style bgcolor='#ffffff'><table class='sm-w-full' style='width: 640px;' cellpadding='0' cellspacing='0' role='presentation'><tr><td class='sm-px-16 sm-py-24' style='padding-left: 40px; padding-right: 40px; padding-top: 48px; padding-bottom: 48px; text-align: center;' bgcolor='#ffffff' align='center'><div style='margin-bottom: 24px;'> <a href='http://theappcalledrooted.com' style='color: #0047c3; text-decoration: none;'> <img src='https://res.cloudinary.com/dxa66e5ic/image/upload/v1560246657/transactional-emails/logo.png' alt='craftingemails' width='143' style='line-height: 100%; vertical-align: middle; border: 0;'> </a></div><p style='line-height: 28px; margin: 0; color: #4a5566; font-size: 21px;'>Hi " + participant.full_name + " 👋</p><p style='line-height: 28px; margin: 0; color: #4a5566; font-size: 21px;'>Meeting organized by " + meeting.owner[0].full_name + " was cancelled.</p><p style='line-height: 28px; margin: 0; color: #4a5566; font-size: 21px;'>Please contact meeting organizer for more information.</p><div class='sm-h-16' style='line-height: 16px;'>&nbsp;</div><table align='center' class='sm-w-full' style='margin-left: auto; margin-right: auto;' cellpadding='0' cellspacing='0' role='presentation'><tr><td align='center' class='hover-bg-brand-600' style='mso-padding-alt: 20px 32px; border-radius: 4px; box-shadow: 0 1px 3px 0 rgba(0, 0, 0, .1), 0 1px 2px 0 rgba(0, 0, 0, .06); color: #ffffff;' bgcolor='#f88500'> <a href='http://theappcalledrooted.com' class='sm-text-14 sm-py-16' style='display: inline-block; font-weight: 700; line-height: 16px; padding-top: 20px; padding-bottom: 20px; padding-left: 32px; padding-right: 32px; color: #ffffff; font-size: 16px; text-decoration: none;'>Contact Organizer</a></td></tr></table><table style='width: 100%;' cellpadding='0' cellspacing='0' role='presentation'><tr class='sm-w-full sm-table'><td class='sm-p-0 sm-text-center sm-table-footer-group sm-w-full' style='border-left: 1px solid #ededf2; padding-left: 16px; padding-top: 24px; padding-bottom: 32px; text-align: left; width: 289px;' align='left'><p class='sm-mb-16' style='font-weight: 700; line-height: 28px; margin: 0; margin-bottom: 12px; color: #4a5566; font-size: 21px;'>" + meeting.meeting_name + "</p><table class='sm-mx-auto' cellpadding='0' cellspacing='0' role='presentation'><tr><td class='sm-block sm-text-center' style='padding-right: 6px;'> <a href='http://craftingemails.com' class='hover-text-brand-700 hover-underline sm-block sm-mb-8' style='text-decoration: none; font-weight: 700; line-height: 16px; color: #0052e2; font-size: 12px;'>organized by " + meeting.owner[0].full_name + "</a></td></tr><tr><td class='sm-block sm-text-center' style='padding-top: 20px; padding-right: 6px; vertical-align: top; width: 92px;'><p style='line-height: 22px; margin: 0; color: #8492a6; font-size: 16px;'>" + meeting.meeting_description + "</p></td></tr></table></td><td align='right' class='sm-pb-8 sm-table-caption sm-w-full' style='padding-top: 24px; vertical-align: top; width: 118px;' valign='top'><table class='sm-mx-auto' cellpadding='0' cellspacing='0' role='presentation'><tr><td style='border-radius: 8px; line-height: 16px; padding-top: 2px; padding-bottom: 2px; padding-left: 8px; padding-right: 8px; color: white; font-size: 12px;' bgcolor='red'>Cancelled</td></tr></table></td></tr></table><div class='sm-h-40' style='line-height: 40px;'>&nbsp;</div><div style='text-align: left;'><table style='width: 100%;' cellpadding='0' cellspacing='0' role='presentation'><tr><td style='padding-bottom: 16px; padding-top: 64px;'><div style='background-color: #e1e1ea; height: 1px; line-height: 1px;'>&nbsp;</div></td></tr></table><p style='line-height: 16px; margin-top: 0; margin-bottom: 16px; color: #8492a6; font-size: 12px;'> This email was sent to you as a registered member of <a href='http://theappcalledrooted.com' class='hover-text-brand-700 hover-underline' style='color: #f88500; text-decoration: none; display: inline-block;'>Rooted</a>. To update your emails preferences <a href='http://theappcalledrooted.com' class='hover-text-brand-700 hover-underline' style='color: #f88500; text-decoration: none; display: inline-block;'>click here</a>. <span class='sm-block sm-mt-16'>Use of the service and website is subject to our <a href='http://craftingemails.com' class='hover-text-brand-700 hover-underline' style='color: #f88500; text-decoration: none; display: inline-block;'>Terms of Use</a> and <a href='http://theappcalledrooted.com' class='hover-text-brand-700 hover-underline' style='color: #f88500; text-decoration: none; display: inline-block;'>Privacy Statement</a>.</span></p><p style='line-height: 16px; margin: 0; color: #8492a6; font-size: 12px;'>&copy; 2020 RedRooster Technologies. All rights reserved.</p></div></td></tr></table></td></tr></table></body></htm"
                         sendEmail(user, title, '', html, 'CancelledMeeting');    
                     });
-
 
                     res.status(200).json({
                         "status": 200,
@@ -593,6 +764,8 @@ router.post('/eggman', function(req, res) {
                 });
 
                 var meeting = data.meetings[0];
+                meeting.owner = null;
+                meeting.participants = null;
 
                 if (!meeting) return res.status(200).json({
                     "status": 200,
@@ -861,6 +1034,145 @@ router.post('/eggman', function(req, res) {
     }
 
     // MARK: - Event Invites
+    if (action == 'invite_contact') {
+        let contact =  JSON.parse(req.body.contact);
+        if (!req.body.calendar_id || !contact) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                meeting.owner = null;
+                meeting.participants = null;
+                meeting.declined_participants = null;
+
+                var meetingInvitePhoneNumbers = meeting.meeting_invite_phone_numbers;
+                var filteredMeetingInvitePhoneNumbers = new Array();
+
+                if (meetingInvitePhoneNumbers == undefined) {
+                    meetingInvitePhoneNumbers = new Array();
+                }
+                else {
+                    filteredMeetingInvitePhoneNumbers = meetingInvitePhoneNumbers.filter(function(invite) {
+                        return invite.fullName == contact.fullName 
+                        || invite.email == contact.email
+                        || invite.phoneNumber == contact.phoneNumber
+                    });
+                }
+
+                if (filteredMeetingInvitePhoneNumbers.length == 0) {
+                    meetingInvitePhoneNumbers.push(contact);
+                }
+                else {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": "Invite to this event was already sent to that user."
+                    }); 
+                }
+
+                meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
+
+                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "meeting": meeting
+                        },
+                        "error_message": null 
+                    });
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
+    if (action == 'uninvite_contact') {
+        let contact =  JSON.parse(req.body.contact);
+        if (!req.body.calendar_id || !contact) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                var meeting = data.meetings[0];
+
+                if (!meeting) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "A meeting was not found for provided id. Please try again."
+                });
+
+                meeting.owner = null;
+                meeting.participants = null;
+                meeting.declined_participants = null;
+
+                var meetingInvitePhoneNumbers = meeting.meeting_invite_phone_numbers;
+                meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers.filter(function(invite) {
+                    return invite.fullName != contact.fullName 
+                    || invite.email != contact.email
+                    || invite.phoneNumber != contact.phoneNumber
+                });
+
+                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": true,
+                        "data": {
+                            "meeting": meeting
+                        },
+                        "error_message": null 
+                    });
+                }).catch(function (error) {
+                    res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": error.message
+                    });
+                });
+            });
+        });
+    }
+
     if (action == 'create_event_invite') {
         // let data = JSON.parse(JSON.parse(req.body.data));
         let data = JSON.parse(req.body.data);
@@ -2105,10 +2417,10 @@ function retrieveDraftMeetingById(collection, id, reference, completionHandler) 
     });  
 }
 
-function updateMeetingForId(collection, data, id, reference, completionHandler) {
+function updateMeetingForId(collection, data, calendarId, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection(collection);
-    refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
+    refCollection.where('calendar_id', '==', id).get(getOptions).then(function(querySnapshot) {
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var object = new Object();
 
@@ -2327,139 +2639,136 @@ function sendText(to, withSubject, textPart, htmlPart, customID) {
 function retrieveUserObject(uid, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection('users');
-    refCollection.doc(uid).get(getOptions).then(function(querySnapshot) {
+    refCollection.doc(uid).get(getOptions).then(function(doc) {
         var users = new Array();
 
-        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
-            var userDoc = doc.data();
-            userDoc.key = doc.id;
+        var userDoc = doc.data();
+        userDoc.key = doc.id;
 
-            // Clean Location
-            userDoc.location = {
-                address_name: userDoc.address_name,
-                address_description: userDoc.address_description,
-                address_line_4: userDoc.address_line_4,
-                address_line_3: userDoc.address_line_3,
-                address_country: userDoc.address_country,
-                address_city: userDoc.address_city,
-                address_line_1: userDoc.addressLine1,
-                address_line_2: userDoc.addressLine2,
-                address_coordinates: {
-                    address_long: userDoc.address_long,
-                    address_lat: userDoc.address_lat,
-                },
-                address_state: userDoc.address_state,
-                address_zip: userDoc.address_zip,
-            }
-            // Get the additional information for user
-            //  Preferences
-            //  Account Type
-            //  Card on File
-            async.parallel({
-                preferences: function(callback) {
-                    var userPreferences = new Array();
-                    async.forEachOf(userDoc.user_preferences, function(preference, key, cb) {
-                        let prefCollection = reference.collection('user_preferences');
-                        prefCollection.where('id','==', preference).get(getOptions).then(function(querysnapshot) {
-                            async.forEachOf(querysnapshot.docs, function(d, k, c) {
-                                var prefdata = d.data();
-                                prefdata.key = d.id;
-                                userPreferences.push(prefdata);
-                                c();
-                            }, function(_e) {
-                                if (_e) { 
-                                    console.log(_e.message);
-                                    cb(_e);
-                                } else {
-                                    cb();
-                                }
-                            });
-                        }).catch(function (error) {
-                            if (error) {
-                                console.log(error.message);
-                                cb(error);
-                            }
-                        });
-                    }, function(e) {
-                        if (e) {
-                            console.error(e.message);
-                            callback(e, null);
-                        } else {
-                            callback(null, userPreferences);
-                        }
-                    });
-                },
-                account_type: function(callback) {
-                    // callback(null, null);
-                    var accountTypes = new Array();
-                    let prefCollection = reference.collection('account_roles');
-                    prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
+        // Clean Location
+        userDoc.location = {
+            address_name: userDoc.address_name,
+            address_description: userDoc.address_description,
+            address_line_4: userDoc.address_line_4,
+            address_line_3: userDoc.address_line_3,
+            address_country: userDoc.address_country,
+            address_city: userDoc.address_city,
+            address_line_1: userDoc.addressLine1,
+            address_line_2: userDoc.addressLine2,
+            address_coordinates: {
+                address_long: userDoc.address_long,
+                address_lat: userDoc.address_lat,
+            },
+            address_state: userDoc.address_state,
+            address_zip: userDoc.address_zip,
+        }
+        // Get the additional information for user
+        //  Preferences
+        //  Account Type
+        //  Card on File
+        async.parallel({
+            preferences: function(callback) {
+                var userPreferences = new Array();
+                async.forEachOf(userDoc.user_preferences, function(preference, key, cb) {
+                    let prefCollection = reference.collection('user_preferences');
+                    prefCollection.where('id','==', preference).get(getOptions).then(function(querysnapshot) {
                         async.forEachOf(querysnapshot.docs, function(d, k, c) {
                             var prefdata = d.data();
                             prefdata.key = d.id;
-                            accountTypes.push(prefdata);
+                            userPreferences.push(prefdata);
                             c();
                         }, function(_e) {
                             if (_e) { 
                                 console.log(_e.message);
-                                callback(_e, accountTypes);
+                                cb(_e);
                             } else {
-                                callback(null, accountTypes);
+                                cb();
                             }
                         });
                     }).catch(function (error) {
                         if (error) {
                             console.log(error.message);
-                            callback(error, null);
+                            cb(error);
                         }
                     });
-                }, 
-                meetings: function(callback) {
-                    // callback(null, null);
-                    var accountTypes = new Array();
-                    retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
-                        if (error) { 
-                            console.log(error.message);
-                            callback(error, accountTypes);
+                }, function(e) {
+                    if (e) {
+                        console.error(e.message);
+                        callback(e, null);
+                    } else {
+                        callback(null, userPreferences);
+                    }
+                });
+            },
+            account_type: function(callback) {
+                // callback(null, null);
+                var accountTypes = new Array();
+                let prefCollection = reference.collection('account_roles');
+                prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
+                    async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                        var prefdata = d.data();
+                        prefdata.key = d.id;
+                        accountTypes.push(prefdata);
+                        c();
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, accountTypes);
                         } else {
-                            data.meetings.forEach(function(meeting) {
-                                console.log("Meeting added")
-                                accountTypes.push(meeting);
-                            });
                             callback(null, accountTypes);
                         }
                     });
-                }
-            }, function(error, results) {
-                console.log(results);
-                console.log(error);
+                }).catch(function (error) {
+                    if (error) {
+                        console.log(error.message);
+                        callback(error, null);
+                    }
+                });
+            }, 
+            meetings: function(callback) {
+                // callback(null, null);
+                var accountTypes = new Array();
+                retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
+                    if (error) { 
+                        console.log(error.message);
+                        callback(error, accountTypes);
+                    } else {
+                        data.meetings.forEach(function(meeting) {
+                            console.log("Meeting added")
+                            accountTypes.push(meeting);
+                        });
+                        callback(null, accountTypes);
+                    }
+                });
+            }
+        }, function(error, results) {
+            console.log(results);
+            console.log(error);
 
-                if (error) return completionHandler(error, null);
+            if (error) return completionHandler(error, null);
 
-                if (results.preferences) {
-                    userDoc.preferences = results.preferences
-                }
+            if (results.preferences) {
+                userDoc.preferences = results.preferences
+            }
 
-                if (results.account_type) {
-                    userDoc.account_type = results.account_type
-                }
+            if (results.account_type) {
+                userDoc.account_type = results.account_type
+            }
 
-                if (results.meetings) {
-                    userDoc.meetings = results.meetings
-                }
+            if (results.meetings) {
+                userDoc.meetings = results.meetings
+            }
 
-                users.push(userDoc);
-                completion();
-            });
-        }, function (err) {
-            if (err) return completionHandler(err, null);
+            users.push(userDoc);
+
             let data = {
                 "uid": uid,
                 "user": users
             }
-            completionHandler(err, data);
+            completionHandler(null, data);
         });
-    }).catch(function (error) {
+    })
+    .catch(function (error) {
         completionHandler(error, null);
     });  
 }
