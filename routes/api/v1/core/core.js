@@ -1035,7 +1035,7 @@ router.post('/eggman', function(req, res) {
 
     // MARK: - Event Invites
     if (action == 'invite_contact') {
-        let contact = req.body.contact;
+        let contact =  req.body.contact;
         if (!req.body.calendar_id || !contact) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -1073,13 +1073,33 @@ router.post('/eggman', function(req, res) {
                 }
                 else {
                     filteredMeetingInvitePhoneNumbers = meetingInvitePhoneNumbers.filter(function(invite) {
-                        return invite.fullName == contact.fullName 
-                        || invite.email == contact.email
-                        || invite.phoneNumber == contact.phoneNumber
+                        return String(invite.fullName).toLowerCase() == String(contact.fullName).toLowerCase()
+                        || invite.email != contact.email
+                        || invite.phone == contact.phone
                     });
                 }
-                if (Array.isArray(filteredMeetingInvitePhoneNumbers) && filteredMeetingInvitePhoneNumbers.length == 0) {
+
+                if (filteredMeetingInvitePhoneNumbers.length == 0) {
                     meetingInvitePhoneNumbers.push(contact);
+                    meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
+                    reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": {
+                                "meeting": meeting,
+                                "didProcessComplete": true
+                            },
+                            "error_message": null 
+                        });
+                    }).catch(function (error) {
+                        res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+                    });
                 }
                 else {
                     res.status(200).json({
@@ -1089,33 +1109,12 @@ router.post('/eggman', function(req, res) {
                         "error_message": "Invite to this event was already sent to that user."
                     }); 
                 }
-
-                meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
-
-                reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
-                    res.status(200).json({
-                        "status": 200,
-                        "success": true,
-                        "data": {
-                            "meeting": meeting,
-                            "didProcessComplete": true
-                        },
-                        "error_message": null 
-                    });
-                }).catch(function (error) {
-                    res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": error.message
-                    });
-                });
             });
         });
     }
 
     if (action == 'uninvite_contact') {
-        let contact = req.body.contact;
+        let contact =  req.body.contact;
         if (!req.body.calendar_id || !contact) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -1147,9 +1146,9 @@ router.post('/eggman', function(req, res) {
 
                 var meetingInvitePhoneNumbers = meeting.meeting_invite_phone_numbers;
                 meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers.filter(function(invite) {
-                    return invite.fullName != contact.fullName 
+                    return String(invite.fullName).toLowerCase() != String(contact.fullName).toLowerCase()
                     || invite.email != contact.email
-                    || invite.phoneNumber != contact.phoneNumber
+                    || invite.phone != contact.phone
                 });
 
                 reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
