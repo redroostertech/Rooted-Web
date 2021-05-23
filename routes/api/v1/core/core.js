@@ -1035,7 +1035,11 @@ router.post('/eggman', function(req, res) {
 
     // MARK: - Event Invites
     if (action == 'invite_contact') {
-        let contact =  JSON.parse(req.body.contact);
+        let contact =  req.body.contact;
+        console.log("CONTACT");
+        console.log(contact)
+        console.log(contact.fullName);
+        console.log(contact.phone);
         if (!req.body.calendar_id || !contact) return res.status(200).json({
             "status": 200,
             "success": false,
@@ -1078,8 +1082,7 @@ router.post('/eggman', function(req, res) {
                         || invite.phoneNumber == contact.phoneNumber
                     });
                 }
-
-                if (filteredMeetingInvitePhoneNumbers.length == 0) {
+                if (Array.isArray(filteredMeetingInvitePhoneNumbers) && filteredMeetingInvitePhoneNumbers.length == 0) {
                     meetingInvitePhoneNumbers.push(contact);
                 }
                 else {
