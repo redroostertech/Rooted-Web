@@ -1098,7 +1098,8 @@ router.post('/eggman', function(req, res) {
                         "status": 200,
                         "success": true,
                         "data": {
-                            "meeting": meeting
+                            "meeting": meeting,
+                            "didProcessComplete": true
                         },
                         "error_message": null 
                     });
@@ -1157,7 +1158,8 @@ router.post('/eggman', function(req, res) {
                         "status": 200,
                         "success": true,
                         "data": {
-                            "meeting": meeting
+                            "meeting": meeting,
+                            "didProcessComplete": true
                         },
                         "error_message": null 
                     });
