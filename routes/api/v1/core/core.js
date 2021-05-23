@@ -1073,9 +1073,9 @@ router.post('/eggman', function(req, res) {
                 }
                 else {
                     filteredMeetingInvitePhoneNumbers = meetingInvitePhoneNumbers.filter(function(invite) {
-                        return String(invite.fullName).toLowerCase() == String(contact.fullName).toLowerCase()
-                        || invite.email == contact.email
-                        || invite.phone == contact.phone
+                        return (String(invite.fullName).toLowerCase() == String(contact.fullName).toLowerCase()
+                        || invite.phone == contact.phone)
+                        && invite.email == contact.email
                     });
                 }
 
