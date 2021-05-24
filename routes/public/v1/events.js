@@ -56,11 +56,12 @@ router.get('/events/:id', function(req, res) {
                         "data": req.Rootedap93w8htrse4oe89gh9ows4t,
                     },
                     "data": {
+                        "meetingId": req.params.id,
                         "errorMessage": response.error_message
                     }
                 }
             });
-    
+            response.meetingId = req.params.id;
             res.status('200').render('admin/event_detail.ejs', {
                 "message" : "Test POST request.",
                 "page" : {
@@ -83,6 +84,7 @@ router.get('/events/:id', function(req, res) {
                         "data": req.Rootedap93w8htrse4oe89gh9ows4t,
                     },
                     "data": {
+                        "meetingId": req.params.id,
                         "errorMessage": err.errorMessage
                     }
                 }
