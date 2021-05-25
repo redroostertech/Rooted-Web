@@ -384,38 +384,43 @@ router.post('/leo', function(req, res) {
                             login_type: 'PHONE'
                         }
 
-                        saveUserObject(uid, userObject, reference, function(error, data) {
-                            if (error) return res.status(200).json({
-                                "status": 200,
-                                "success": false,
-                                "data": null,
-                                "error_message": error.message
-                            });
-
-                            retrieveUserObject(uid, reference, function(error, data) {
+                        getFirebaseFirStorageInstance(res, function(ref) {
+                            saveUserObject(uid, userObject, ref, function(error, data) {
                                 if (error) return res.status(200).json({
                                     "status": 200,
                                     "success": false,
                                     "data": null,
                                     "error_message": error.message
                                 });
-        
+
+                                getFirebaseFirStorageInstance(res, function(r) {
+
+                                    retrieveUserObject(uid, r, function(error, data) {
+                                        if (error) return res.status(200).json({
+                                            "status": 200,
+                                            "success": false,
+                                            "data": null,
+                                            "error_message": error.message
+                                        });
+                
+                                        res.status(200).json({
+                                            "status": 200,
+                                            "success": true,
+                                            "data": data,
+                                            "error_message": null
+                                        });
+                                    });
+                                });
+                            }).catch(function (error) {
                                 res.status(200).json({
                                     "status": 200,
-                                    "success": true,
-                                    "data": data,
-                                    "error_message": null
+                                    "success": false,
+                                    "data": null,
+                                    "error_message": error.message
                                 });
                             });
-                        }).catch(function (error) {
-                            res.status(200).json({
-                                "status": 200,
-                                "success": false,
-                                "data": null,
-                                "error_message": error.message
-                            });
-                        });
-                    } 
+                        })
+                    }
                     else { 
                         data.user[0].token = customToken                       
                         res.status(200).json({
