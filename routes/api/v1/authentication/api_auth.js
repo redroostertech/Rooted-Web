@@ -502,9 +502,9 @@ router.post('/leo', function(req, res) {
     if (action == 'session_check') {
 
         let token = req.body.token;
-        let email = req.body.email;
+        let uid = req.body.uid;
 
-        if (!token || !email) return res.status(200).json({
+        if (!token || !uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -543,7 +543,6 @@ router.post('/leo', function(req, res) {
                                 "error_message": err.message
                             });
 
-                            data.user[0].email_address = email;
                             data.user[0].token = customToken;
                             
                             res.status(200).json({
