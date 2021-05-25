@@ -384,10 +384,15 @@ router.post('/leo', function(req, res) {
                             login_type: 'PHONE'
                         }
 
-                        let refCollection = reference.collection('users');
-                        refCollection.doc(uid).set(userObject).then(function(docRef) {
-                            console.log("Document written with ID: ", docRef.id);
-                            retrieveUserObject(uid, ref, function(error, data) {
+                        saveUserObject(uid, userObject, reference, function(error, data) {
+                            if (error) return res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
+                            });
+
+                            retrieveUserObject(uid, reference, function(error, data) {
                                 if (error) return res.status(200).json({
                                     "status": 200,
                                     "success": false,
@@ -811,6 +816,17 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 completionHandler(null, data);
             });
         }
+    })
+    .catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
+function saveUserObject(uid, data, reference, completionHandler) {
+    let refCollection = reference.collection('users');
+    refCollection.doc(uid).set(data).then(function(docRef) {
+        console.log("Document written with ID: ", docRef);
+        completionHandler(null, { "uid": uid })
     })
     .catch(function (error) {
         completionHandler(error, null);
