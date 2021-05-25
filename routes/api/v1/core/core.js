@@ -142,45 +142,56 @@ router.post('/eggman', function(req, res) {
             let refCollection = reference.collection('users');
             var data;
             if (typeof req.body.data === 'string') {
-                console.log('Data is a string');
                 data = JSON.parse(req.body.data);
-            } else {
+            } 
+            else {
                 data = req.body.data;
             }
-
-            // console.log(data);
-
-            if (!req.body.key || !req.body.uid) return res.status(200).json({
+            if (!req.body.uid) return res.status(200).json({
                 "status": 200,
                 "success": false,
                 "data": null,
                 "error_message": "Something went wrong. Please try again."
             });
 
-            refCollection.doc(req.body.key).set(data, { merge: true }).then(function() {
-                retrieveUserObject(req.body.uid, reference, function(error, data) {
-                    if (error) return res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": error.message
-                    });
-    
-                    if (data.user.length === 0) return res.status(200).json({
-                        "status": 200,
-                        "success": false,
-                        "data": null,
-                        "error_message": "User does not exist."
-                    });
-    
-                    res.status(200).json({
-                        "status": 200,
-                        "success": true,
-                        "data": data,
-                        "error_message": null
-                    });
-                });
-            }).catch(function (error) {
+            console.log(data);
+            refCollection
+            .doc(req.body.uid)
+            .set(
+                data, 
+                { 
+                    merge: true 
+                }
+            )
+            .then(function() {
+                retrieveUserObject(
+                    req.body.uid, 
+                    reference, 
+                    function(error, data) {
+                        if (error) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+        
+                        if (data.user.length === 0) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": "User does not exist."
+                        });
+        
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    }
+                );
+            })
+            .catch(function (error) {
                 res.status(200).json({
                     "status": 200,
                     "success": false,
