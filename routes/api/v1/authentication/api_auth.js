@@ -396,14 +396,7 @@ router.post('/leo', function(req, res) {
                                 "data": data,
                                 "error_message": null
                             });
-                        }).catch(function (error) {
-                            res.status(200).json({
-                                "status": 200,
-                                "success": false,
-                                "data": null,
-                                "error_message": error.message
-                            });
-                        });
+                        })
                     } 
                     else { 
                         data.user[0].token = customToken;
@@ -820,7 +813,6 @@ function saveUserObject(uid, data, reference, completionHandler) {
         completionHandler(error, null);
     });  
 }
-
 
 function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, reference, completionHandler) {
     // Get the original user data
