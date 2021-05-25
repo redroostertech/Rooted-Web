@@ -398,7 +398,7 @@ router.post('/leo', function(req, res) {
                                     "data": null,
                                     "error_message": error.message
                                 });
-
+                                data.marketing_flow_id = "show_onboarding_flow"
                                 res.status(200).json({
                                     "status": 200,
                                     "success": true,
