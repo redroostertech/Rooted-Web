@@ -50,6 +50,7 @@ var activeFunctions = [
     'invite_contact',
     'retrieve_meeting',
     'retrieve_meeting_drafts',
+    'retrieve_meeting_for_id',
     'retrieve_sent_meetings',
     'retrieve_upcoming_meetings',
     'retrieve_user',
@@ -395,7 +396,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'retrieve_meeting') {
-        if (!req.body.meeting_id) return res.status(200).json({
+        if (!req.body.id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -403,7 +404,41 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+
+                if (data.meetings.length === 0) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Meeting does not exist."
+                });
+
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
+                });
+            });
+        });
+    }
+
+    if (action == 'retrieve_meeting_for_id') {
+        if (!req.body.id) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -429,7 +464,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'accept_meeting') {
-        if (!req.body.calendar_id || !req.body.uid) return res.status(200).json({
+        if (!req.body.id || !req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -454,7 +489,7 @@ router.post('/eggman', function(req, res) {
                     "error_message": "User does not exist."
                 });
 
-                retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                     if (error) return res.status(200).json({
                         "status": 200,
                         "success": false,
@@ -553,7 +588,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'decline_meeting') {
-        if (!req.body.calendar_id || !req.body.uid) return res.status(200).json({
+        if (!req.body.id || !req.body.uid) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -578,7 +613,7 @@ router.post('/eggman', function(req, res) {
                     "error_message": "User does not exist."
                 });
 
-                retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+                retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                     if (error) return res.status(200).json({
                         "status": 200,
                         "success": false,
@@ -679,7 +714,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'cancel_meeting') {
-        if (!req.body.calendar_id || !req.body.user_id) return res.status(200).json({
+        if (!req.body.id || !req.body.user_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -687,7 +722,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -730,7 +765,7 @@ router.post('/eggman', function(req, res) {
                         "status": 200,
                         "success": true,
                         "data": {
-                            "meeting_id": req.body.meeting_id
+                            "meeting_id": req.body.id
                         },
                         "error_message": null 
                     });
@@ -747,7 +782,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'delete_meeting') {
-        if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
+        if (!req.body.id || !req.body.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -755,7 +790,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsByCalendarId('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -919,7 +954,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'update_draft') {
-        if (!req.body.meeting_id || !req.body.user_id || !req.body.data) return res.status(200).json({
+        if (!req.body.id || !req.body.user_id || !req.body.data) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -927,7 +962,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById('draft_meetings', req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('draft_meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -962,7 +997,7 @@ router.post('/eggman', function(req, res) {
                         "status": 200,
                         "success": true,
                         "data": {
-                            "meeting_id": req.body.meeting_id
+                            "meeting_id": req.body.id
                         },
                         "error_message": null 
                     });
@@ -979,7 +1014,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'delete_draft') {
-        if (!req.body.meeting_id || !req.body.owner_id) return res.status(200).json({
+        if (!req.body.id || !req.body.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -987,7 +1022,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsById('draft_meetings', req.body.meeting_id, reference, function(error, data) {
+            retrieveMeetingsById('draft_meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -1036,7 +1071,7 @@ router.post('/eggman', function(req, res) {
     // MARK: - Event Invites
     if (action == 'invite_contact') {
         let contact =  req.body.contact;
-        if (!req.body.calendar_id || !contact) return res.status(200).json({
+        if (!req.body.id || !contact) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -1044,7 +1079,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -1115,7 +1150,7 @@ router.post('/eggman', function(req, res) {
 
     if (action == 'uninvite_contact') {
         let contact =  req.body.contact;
-        if (!req.body.calendar_id || !contact) return res.status(200).json({
+        if (!req.body.id || !contact) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -1123,7 +1158,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveMeetingsByCalendarId('meetings', req.body.calendar_id, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -2025,30 +2060,59 @@ function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, r
 function retrieveMeetingsById(collection, id, reference, completionHandler) {
     // Get the original user data
     let refCollection = reference.collection(collection);
-    refCollection.where('id', '==', id).get(getOptions).then(function(querySnapshot) {
+    refCollection.doc(id).get(getOptions).then(function(doc) {
         var users = new Array();
 
-        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
-            var userDoc = doc.data();
-            userDoc.key = doc.id;
+        var userDoc = doc.data();
+        if (userDoc == undefined) return completionHandler(
+            {
+                "message": "Meeting does not exist."
+            }, 
+            null
+        )
+        userDoc.key = doc.id;
 
-            // Get the additional information for user
-            async.parallel({
-                owner: function(callback) {
-                    var owner = new Array();
-                    let prefCollection = reference.collection('users');
-                    prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
-                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+        async.parallel({
+            owner: function(callback) {
+                var owner = new Array();
+                let prefCollection = reference.collection('users');
+                prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                    async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                        var prefdata = d.data();
+                        prefdata.key = d.id;
+                        owner.push(prefdata);
+                        c();
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, owner);
+                        } else {
+                            callback(null, owner);
+                        }
+                    });
+                }).catch(function (error) {
+                    if (error) {
+                        console.log(error.message);
+                        callback(error, null);
+                    }
+                });
+            },
+            participants: function(callback) {
+                var participants = new Array();
+                let prefCollection = reference.collection('users');
+                async.forEachOf(userDoc.meeting_participants_ids, function(participantId, k, completion) {
+                    prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, l, c) {
                             var prefdata = d.data();
                             prefdata.key = d.id;
-                            owner.push(prefdata);
+                            participants.push(prefdata);
                             c();
                         }, function(_e) {
                             if (_e) { 
                                 console.log(_e.message);
-                                callback(_e, owner);
+                                completion(_e, participants);
                             } else {
-                                callback(null, owner);
+                                completion(null, participants);
                             }
                         });
                     }).catch(function (error) {
@@ -2057,100 +2121,71 @@ function retrieveMeetingsById(collection, id, reference, completionHandler) {
                             callback(error, null);
                         }
                     });
-                },
-                participants: function(callback) {
-                    var participants = new Array();
-                    let prefCollection = reference.collection('users');
-                    async.forEachOf(userDoc.meeting_participants_ids, function(participantId, k, completion) {
-                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
-                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
-                                var prefdata = d.data();
-                                prefdata.key = d.id;
-                                participants.push(prefdata);
-                                c();
-                            }, function(_e) {
-                                if (_e) { 
-                                    console.log(_e.message);
-                                    completion(_e, participants);
-                                } else {
-                                    completion(null, participants);
-                                }
-                            });
-                        }).catch(function (error) {
-                            if (error) {
-                                console.log(error.message);
-                                callback(error, null);
+                }, function(_e) {
+                    if (_e) { 
+                        console.log(_e.message);
+                        callback(_e, participants);
+                    } else {
+                        callback(null, participants);
+                    }
+                })
+            },
+            declined_participants: function(callback) {
+                var participants = new Array();
+                let prefCollection = reference.collection('users');
+                async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                    prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            participants.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                completion(_e, participants);
+                            } else {
+                                completion(null, participants);
                             }
                         });
-                    }, function(_e) {
-                        if (_e) { 
-                            console.log(_e.message);
-                            callback(_e, participants);
-                        } else {
-                            callback(null, participants);
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
                         }
-                    })
-                },
-                declined_participants: function(callback) {
-                    var participants = new Array();
-                    let prefCollection = reference.collection('users');
-                    async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
-                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
-                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
-                                var prefdata = d.data();
-                                prefdata.key = d.id;
-                                participants.push(prefdata);
-                                c();
-                            }, function(_e) {
-                                if (_e) { 
-                                    console.log(_e.message);
-                                    completion(_e, participants);
-                                } else {
-                                    completion(null, participants);
-                                }
-                            });
-                        }).catch(function (error) {
-                            if (error) {
-                                console.log(error.message);
-                                callback(error, null);
-                            }
-                        });
-                    }, function(_e) {
-                        if (_e) { 
-                            console.log(_e.message);
-                            callback(_e, participants);
-                        } else {
-                            callback(null, participants);
-                        }
-                    })
-                },
-            }, function(error, results) {
-                console.log(results);
-                console.log(error);
+                    });
+                }, function(_e) {
+                    if (_e) { 
+                        console.log(_e.message);
+                        callback(_e, participants);
+                    } else {
+                        callback(null, participants);
+                    }
+                })
+            },
+        }, function(error, results) {
+            console.log(results);
+            console.log(error);
 
-                if (error) return completionHandler(error, null);
+            if (error) return completionHandler(error, null);
 
-                if (results.owner) {
-                    userDoc.owner = results.owner
-                }
+            if (results.owner) {
+                userDoc.owner = results.owner
+            }
 
-                if (results.participants) {
-                    userDoc.participants = results.participants;
-                }
+            if (results.participants) {
+                userDoc.participants = results.participants;
+            }
 
-                if (results.declined_participants) {
-                    userDoc.declined_participants = results.declined_participants;
-                }
+            if (results.declined_participants) {
+                userDoc.declined_participants = results.declined_participants;
+            }
 
-                users.push(userDoc);
-                completion();
-            });
-        }, function (err) {
-            if (err) return completionHandler(err, null);
+            users.push(userDoc);
             let data = {
                 "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
             }
-            completionHandler(err, data);
+            completionHandler(error, data);
         });
     }).catch(function (error) {
         completionHandler(error, null);

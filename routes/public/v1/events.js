@@ -36,7 +36,7 @@ router.get('/events/:id', function(req, res) {
             uri: req.protocol + '://' + req.get('host') + '/api/v1/core/eggman',
             body: {
                 action: 'retrieve_meeting_for_id',
-                meetingId: req.params.id,
+                meeting_id: req.params.id,
             },
             headers: {
                 "User-Agent": "Rooted-web-api-Request",
