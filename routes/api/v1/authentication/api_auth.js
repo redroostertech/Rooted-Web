@@ -27,14 +27,13 @@ router.use(session(configs.appSession));
 var getOptions = { source: 'cache' };
 
 var activeFunctions = [
-    'email_registration',
-    'google_registration',
     'email_login',
-    'session_check',
-    'forgot_password', 
+    'email_registration',
+    'forgot_password',
+    'google_registration',
     'log_out', 
-    'accept_meeting',
-    'phone_registration'
+    'phone_registration',
+    'session_check',
 ]
 
 router.post('/leo', function(req, res) { 
@@ -308,7 +307,7 @@ router.post('/leo', function(req, res) {
     }
 
     if (action == 'phone_registration') {
-        let phone_number = req.body.phoneNumber;
+        let phone_number = req.body.phone_number;
         let public_key_string = req.body.public_key_string;
         let private_key_encrypted_string = req.body.private_key_encrypted_string;
         let uid = req.body.uid;
@@ -326,9 +325,8 @@ router.post('/leo', function(req, res) {
                     "status": 200,
                     "success": false,
                     "data": null,
-                    "error_message": "Email or password are invalid. Please try again."
+                    "error_message": error.message
                 });
-                
                 jwt.sign({ 
                     uid: uid 
                 }, 
@@ -340,11 +338,9 @@ router.post('/leo', function(req, res) {
                         "status": 200,
                         "success": false,
                         "data": null,
-                        "error_message": err.message
+                        "error_message": error.message
                     });
-
-                    if (data.user.length === 0) {
-
+                    if (data.user.length == 0) {
                         // Create user
                         var userObject = {
                             id: randomstring.generate(25),
@@ -388,35 +384,35 @@ router.post('/leo', function(req, res) {
                             login_type: 'PHONE'
                         }
 
-                        getFirebaseFirStorageInstance(res, function(ref) {
-                            let refCollection = ref.collection('users');
-                            refCollection.doc(uid).set(userObject).then(function(docRef) {
-                                console.log("Document written with ID: ", docRef.id);
-                                retrieveUserObject(uid, ref, function(error, data) {
-                                    if (error) return res.status(200).json({
-                                        "status": 200,
-                                        "success": false,
-                                        "data": null,
-                                        "error_message": error.message
-                                    });
-            
-                                    res.status(200).json({
-                                        "status": 200,
-                                        "success": true,
-                                        "data": data,
-                                        "error_message": null
-                                    });
-                                });
-                            }).catch(function (error) {
-                                res.status(200).json({
+                        let refCollection = reference.collection('users');
+                        refCollection.doc(uid).set(userObject).then(function(docRef) {
+                            console.log("Document written with ID: ", docRef.id);
+                            retrieveUserObject(uid, ref, function(error, data) {
+                                if (error) return res.status(200).json({
                                     "status": 200,
                                     "success": false,
                                     "data": null,
                                     "error_message": error.message
                                 });
+        
+                                res.status(200).json({
+                                    "status": 200,
+                                    "success": true,
+                                    "data": data,
+                                    "error_message": null
+                                });
+                            });
+                        }).catch(function (error) {
+                            res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
                             });
                         });
-                    } else {                        
+                    } 
+                    else { 
+                        data.user[0].token = customToken                       
                         res.status(200).json({
                             "status": 200,
                             "success": true,
@@ -679,130 +675,142 @@ function retrieveUserObject(uid, reference, completionHandler) {
         var users = new Array();
 
         var userDoc = doc.data();
-        userDoc.key = doc.id;
-
-        // Clean Location
-        userDoc.location = {
-            address_name: userDoc.address_name,
-            address_description: userDoc.address_description,
-            address_line_4: userDoc.address_line_4,
-            address_line_3: userDoc.address_line_3,
-            address_country: userDoc.address_country,
-            address_city: userDoc.address_city,
-            address_line_1: userDoc.addressLine1,
-            address_line_2: userDoc.addressLine2,
-            address_coordinates: {
-                address_long: userDoc.address_long,
-                address_lat: userDoc.address_lat,
-            },
-            address_state: userDoc.address_state,
-            address_zip: userDoc.address_zip,
+        console.log(userDoc == undefined)
+        if (userDoc == undefined) {
+            completionHandler(
+                null, 
+                {
+                    "uid": uid,
+                    "user": new Array()
+                }
+            );
         }
-        // Get the additional information for user
-        //  Preferences
-        //  Account Type
-        //  Card on File
-        async.parallel({
-            preferences: function(callback) {
-                var userPreferences = new Array();
-                async.forEachOf(userDoc.user_preferences, function(preference, key, cb) {
-                    let prefCollection = reference.collection('user_preferences');
-                    prefCollection.where('id','==', preference).get(getOptions).then(function(querysnapshot) {
+        else {
+            userDoc.key = doc.id;
+
+            // Clean Location
+            userDoc.location = {
+                address_name: userDoc.address_name,
+                address_description: userDoc.address_description,
+                address_line_4: userDoc.address_line_4,
+                address_line_3: userDoc.address_line_3,
+                address_country: userDoc.address_country,
+                address_city: userDoc.address_city,
+                address_line_1: userDoc.addressLine1,
+                address_line_2: userDoc.addressLine2,
+                address_coordinates: {
+                    address_long: userDoc.address_long,
+                    address_lat: userDoc.address_lat,
+                },
+                address_state: userDoc.address_state,
+                address_zip: userDoc.address_zip,
+            }
+            // Get the additional information for user
+            //  Preferences
+            //  Account Type
+            //  Card on File
+            async.parallel({
+                preferences: function(callback) {
+                    var userPreferences = new Array();
+                    async.forEachOf(userDoc.user_preferences, function(preference, key, cb) {
+                        let prefCollection = reference.collection('user_preferences');
+                        prefCollection.where('id','==', preference).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                userPreferences.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    cb(_e);
+                                } else {
+                                    cb();
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                cb(error);
+                            }
+                        });
+                    }, function(e) {
+                        if (e) {
+                            console.error(e.message);
+                            callback(e, null);
+                        } else {
+                            callback(null, userPreferences);
+                        }
+                    });
+                },
+                account_type: function(callback) {
+                    // callback(null, null);
+                    var accountTypes = new Array();
+                    let prefCollection = reference.collection('account_roles');
+                    prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
                         async.forEachOf(querysnapshot.docs, function(d, k, c) {
                             var prefdata = d.data();
                             prefdata.key = d.id;
-                            userPreferences.push(prefdata);
+                            accountTypes.push(prefdata);
                             c();
                         }, function(_e) {
                             if (_e) { 
                                 console.log(_e.message);
-                                cb(_e);
+                                callback(_e, accountTypes);
                             } else {
-                                cb();
+                                callback(null, accountTypes);
                             }
                         });
                     }).catch(function (error) {
                         if (error) {
                             console.log(error.message);
-                            cb(error);
+                            callback(error, null);
                         }
                     });
-                }, function(e) {
-                    if (e) {
-                        console.error(e.message);
-                        callback(e, null);
-                    } else {
-                        callback(null, userPreferences);
-                    }
-                });
-            },
-            account_type: function(callback) {
-                // callback(null, null);
-                var accountTypes = new Array();
-                let prefCollection = reference.collection('account_roles');
-                prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
-                    async.forEachOf(querysnapshot.docs, function(d, k, c) {
-                        var prefdata = d.data();
-                        prefdata.key = d.id;
-                        accountTypes.push(prefdata);
-                        c();
-                    }, function(_e) {
-                        if (_e) { 
-                            console.log(_e.message);
-                            callback(_e, accountTypes);
+                }, 
+                meetings: function(callback) {
+                    // callback(null, null);
+                    var accountTypes = new Array();
+                    retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
+                        if (error) { 
+                            console.log(error.message);
+                            callback(error, accountTypes);
                         } else {
+                            data.meetings.forEach(function(meeting) {
+                                console.log("Meeting added")
+                                accountTypes.push(meeting);
+                            });
                             callback(null, accountTypes);
                         }
                     });
-                }).catch(function (error) {
-                    if (error) {
-                        console.log(error.message);
-                        callback(error, null);
-                    }
-                });
-            }, 
-            meetings: function(callback) {
-                // callback(null, null);
-                var accountTypes = new Array();
-                retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
-                    if (error) { 
-                        console.log(error.message);
-                        callback(error, accountTypes);
-                    } else {
-                        data.meetings.forEach(function(meeting) {
-                            console.log("Meeting added")
-                            accountTypes.push(meeting);
-                        });
-                        callback(null, accountTypes);
-                    }
-                });
-            }
-        }, function(error, results) {
-            console.log(results);
-            console.log(error);
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
 
-            if (error) return completionHandler(error, null);
+                if (error) return completionHandler(error, null);
 
-            if (results.preferences) {
-                userDoc.preferences = results.preferences
-            }
+                if (results.preferences) {
+                    userDoc.preferences = results.preferences
+                }
 
-            if (results.account_type) {
-                userDoc.account_type = results.account_type
-            }
+                if (results.account_type) {
+                    userDoc.account_type = results.account_type
+                }
 
-            if (results.meetings) {
-                userDoc.meetings = results.meetings
-            }
+                if (results.meetings) {
+                    userDoc.meetings = results.meetings
+                }
 
-            users.push(userDoc);
+                users.push(userDoc);
 
-            let data = {
-                "uid": uid,
-                "user": users
-            }
-            completionHandler(null, data);
-        });
+                let data = {
+                    "uid": uid,
+                    "user": users
+                }
+                completionHandler(null, data);
+            });
+        }
     })
     .catch(function (error) {
         completionHandler(error, null);
