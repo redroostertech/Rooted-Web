@@ -219,7 +219,6 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                console.log(data);
                 if (data.user.length === 0) return res.status(200).json({
                     "status": 200,
                     "success": false,

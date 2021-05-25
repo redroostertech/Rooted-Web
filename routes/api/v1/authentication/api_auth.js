@@ -32,7 +32,9 @@ var activeFunctions = [
     'email_login',
     'session_check',
     'forgot_password', 
-    'log_out', 'accept_meeting'
+    'log_out', 
+    'accept_meeting',
+    'phone_registration'
 ]
 
 router.post('/leo', function(req, res) { 
@@ -259,6 +261,131 @@ router.post('/leo', function(req, res) {
                             payment_info_id: new Array(),
                             last_known_checkin_ids: new Array(),
                             login_type: 'GOOGLE'
+                        }
+
+                        getFirebaseFirStorageInstance(res, function(ref) {
+                            let refCollection = ref.collection('users');
+                            refCollection.doc(uid).set(userObject).then(function(docRef) {
+                                console.log("Document written with ID: ", docRef.id);
+                                retrieveUserObject(uid, ref, function(error, data) {
+                                    if (error) return res.status(200).json({
+                                        "status": 200,
+                                        "success": false,
+                                        "data": null,
+                                        "error_message": error.message
+                                    });
+            
+                                    res.status(200).json({
+                                        "status": 200,
+                                        "success": true,
+                                        "data": data,
+                                        "error_message": null
+                                    });
+                                });
+                            }).catch(function (error) {
+                                res.status(200).json({
+                                    "status": 200,
+                                    "success": false,
+                                    "data": null,
+                                    "error_message": error.message
+                                });
+                            });
+                        });
+                    } else {
+                        data.user[0].email_address = email;
+                        data.user[0].token = customToken;
+                        
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    }
+                });
+            });
+        });
+    }
+
+    if (action == 'phone_registration') {
+        let phone_number = req.body.phoneNumber;
+        let public_key_string = req.body.public_key_string;
+        let private_key_encrypted_string = req.body.private_key_encrypted_string;
+        let uid = req.body.uid;
+
+        if (!phone_number || !uid) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveUserObject(uid, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Email or password are invalid. Please try again."
+                });
+                
+                jwt.sign({ 
+                    uid: uid 
+                }, 
+                jwtrefresh, 
+                {
+                    expiresIn: jwtrefreshLimit
+                }, function(err, customToken) {
+                    if (err) return res.status(200).json({
+                        "status": 200,
+                        "success": false,
+                        "data": null,
+                        "error_message": err.message
+                    });
+
+                    if (typeof data.user[0] == 'undefined') {
+
+                        // Create user
+                        var userObject = {
+                            id: randomstring.generate(25),
+                            email_address: null,
+                            uid: uid,
+                            token: customToken,
+                            public_key_string: public_key_string,
+                            private_key_encrypted_string: private_key_encrypted_string,
+                            createdAt: new Date(),
+                            lastLogin: new Date(),
+                            first_name: null,
+                            full_name: null,
+                            last_name: null,
+                            preferred_currency: 'USD',
+                            initial_setup : false,
+                            account_type_id: 10,
+                            maximum_events: 3,
+                            address_line_1 : null,
+                            address_line_2 : null,
+                            address_line_3 : null,
+                            address_line_4 : null,
+                            address_city : null,
+                            address_state : null,
+                            address_zip_code : null,
+                            address_long : null,
+                            address_lat : null,
+                            address_country: null,
+                            address_description: null,
+                            bio: null,
+                            job_title: null,
+                            company_name: null,
+                            phone_number_country_code: null,
+                            phone_number_area_code: null,
+                            phone_number_string: phone_number,
+                            gender: null,
+                            dob: null,
+                            user_preferences: [0, 1, 2, 3],
+                            card_on_file: false,
+                            payment_info_id: new Array(),
+                            last_known_checkin_ids: new Array(),
+                            login_type: 'PHONE'
                         }
 
                         getFirebaseFirStorageInstance(res, function(ref) {
