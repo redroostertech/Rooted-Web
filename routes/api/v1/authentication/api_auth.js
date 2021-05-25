@@ -338,7 +338,7 @@ router.post('/leo', function(req, res) {
                         "status": 200,
                         "success": false,
                         "data": null,
-                        "error_message": error.message
+                        "error_message": err.message
                     });
                     if (data.user.length == 0) {
                         // Create user
@@ -383,46 +383,30 @@ router.post('/leo', function(req, res) {
                             last_known_checkin_ids: new Array(),
                             login_type: 'PHONE'
                         }
-
-                        getFirebaseFirStorageInstance(res, function(ref) {
-                            saveUserObject(uid, userObject, ref, function(error, data) {
-                                if (error) return res.status(200).json({
-                                    "status": 200,
-                                    "success": false,
-                                    "data": null,
-                                    "error_message": error.message
-                                });
-
-                                getFirebaseFirStorageInstance(res, function(r) {
-
-                                    retrieveUserObject(uid, r, function(error, data) {
-                                        if (error) return res.status(200).json({
-                                            "status": 200,
-                                            "success": false,
-                                            "data": null,
-                                            "error_message": error.message
-                                        });
-                
-                                        res.status(200).json({
-                                            "status": 200,
-                                            "success": true,
-                                            "data": data,
-                                            "error_message": null
-                                        });
-                                    });
-                                });
-                            }).catch(function (error) {
-                                res.status(200).json({
-                                    "status": 200,
-                                    "success": false,
-                                    "data": null,
-                                    "error_message": error.message
-                                });
+                        saveUserObject(uid, userObject, reference, function(error, data) {
+                            if (error) return res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
                             });
-                        })
-                    }
+                            res.status(200).json({
+                                "status": 200,
+                                "success": true,
+                                "data": data,
+                                "error_message": null
+                            });
+                        }).catch(function (error) {
+                            res.status(200).json({
+                                "status": 200,
+                                "success": false,
+                                "data": null,
+                                "error_message": error.message
+                            });
+                        });
+                    } 
                     else { 
-                        data.user[0].token = customToken                       
+                        data.user[0].token = customToken;
                         res.status(200).json({
                             "status": 200,
                             "success": true,
@@ -430,7 +414,7 @@ router.post('/leo', function(req, res) {
                             "error_message": null
                         });
                     }
-                });
+                })
             });
         });
     }
@@ -678,14 +662,13 @@ function getFirebaseFirStorageInstance(res, callback) {
     });
 }
 
-function retrieveUserObject(uid, reference, completionHandler) {
+function retrieveUserObject(uid, ref, completionHandler) {
     // Get the original user data
-    let refCollection = reference.collection('users');
+    let refCollection = ref.collection('users');
     refCollection.doc(uid).get(getOptions).then(function(doc) {
         var users = new Array();
 
         var userDoc = doc.data();
-        console.log(userDoc == undefined)
         if (userDoc == undefined) {
             completionHandler(
                 null, 
@@ -723,7 +706,7 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 preferences: function(callback) {
                     var userPreferences = new Array();
                     async.forEachOf(userDoc.user_preferences, function(preference, key, cb) {
-                        let prefCollection = reference.collection('user_preferences');
+                        let prefCollection = ref.collection('user_preferences');
                         prefCollection.where('id','==', preference).get(getOptions).then(function(querysnapshot) {
                             async.forEachOf(querysnapshot.docs, function(d, k, c) {
                                 var prefdata = d.data();
@@ -756,7 +739,7 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 account_type: function(callback) {
                     // callback(null, null);
                     var accountTypes = new Array();
-                    let prefCollection = reference.collection('account_roles');
+                    let prefCollection = ref.collection('account_roles');
                     prefCollection.where('id','==', userDoc.account_type_id).get(getOptions).then(function(querysnapshot) {
                         async.forEachOf(querysnapshot.docs, function(d, k, c) {
                             var prefdata = d.data();
@@ -781,7 +764,7 @@ function retrieveUserObject(uid, reference, completionHandler) {
                 meetings: function(callback) {
                     // callback(null, null);
                     var accountTypes = new Array();
-                    retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), reference, function(error, data) {
+                    retrieveMeetings('meetings', userDoc.uid, moment().format(), moment().format(), ref, function(error, data) {
                         if (error) { 
                             console.log(error.message);
                             callback(error, accountTypes);
@@ -838,19 +821,18 @@ function saveUserObject(uid, data, reference, completionHandler) {
     });  
 }
 
-function retrieveMeetings(uid, reference, completionHandler) {
+
+function retrieveMeetings(collection, uid, optionalStartDate, optionalEndDate, reference, completionHandler) {
     // Get the original user data
     // Get the additional information for user
-    let refCollection = reference.collection('meetings');
-    refCollection.where('owner_id','==', uid).limit(3).get(getOptions).then(function(querySnapshot) {
+    console.log("The day before: " + optionalStartDate);
+    console.log("The Day After: " + optionalEndDate);
+    let refCollection = reference.collection(collection);
+    refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
         var users = new Array();
 
         async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
             var userDoc = doc.data();
-
-            console.log(moment(userDoc.meeting_date.end_date).diff(moment(), 'days'));
-            if (moment(userDoc.meeting_date.end_date).diff(moment(), 'days') < -1) return completion();
-
             userDoc.key = doc.id;
 
             // Get the additional information for user
@@ -945,6 +927,9 @@ function retrieveMeetings(uid, reference, completionHandler) {
                         }
                     })
                 },
+                activity: function(callback) {
+                    callback();
+                }
             }, function(error, results) {
                 console.log(results);
                 console.log(error);
@@ -952,7 +937,7 @@ function retrieveMeetings(uid, reference, completionHandler) {
                 if (error) return completionHandler(error, null);
 
                 if (results.owner) {
-                    userDoc.owner = results.owner
+                    userDoc.owner = results.owner;
                 }
 
                 if (results.participants) {
@@ -969,7 +954,7 @@ function retrieveMeetings(uid, reference, completionHandler) {
         }, function (err) {
             if (err) return completionHandler(err, null);
             let data = {
-                "meetings": users
+                "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
             }
             completionHandler(err, data);
         });
