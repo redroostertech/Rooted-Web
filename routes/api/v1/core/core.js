@@ -15,6 +15,7 @@ const moment                            = require('moment');
 const async                             = require('async');
 const algoliasearch                     = require('algoliasearch');
 const twilio                            = require('twilio');
+const { first } = require('underscore');
 
 const mailJet                           = require('node-mailjet').connect('b3711ac51c20213f29f627828b864471', '4b1b0d115a79c620e323ab576e80df26');
 const algoliaClient                     = algoliasearch('7D9VLBWPD7', '79b58968c114b4906074642df97f7910');
@@ -1132,10 +1133,58 @@ router.post('/eggman', function(req, res) {
                 }
 
                 if (filteredMeetingInvitePhoneNumbers.length == 0) {
-                    
                     meetingInvitePhoneNumbers.push(contact);
                     meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
                     reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
+                        AlgoliaIndexes.userPhoneNumbers.search(contact.phone).then(({ hits }) => {
+                            console.log(hits);
+                            if (hits.length == 0) {
+                                return
+                            }
+                            var firstHit = hits[0]
+                            if (firstHit == undefined) {
+                                return
+                            }
+
+                            var hitUID = firstHit.uid
+                            if (hitUID != undefined) {
+                                retrieveUserObject(hitUID, reference, function(error, data) {
+                                    if (data.user.length !== 0) {
+                                        var fcmToken = data.user[0].fcm_token
+                                        if (fcmToken != undefined) {
+                                            main.firebase(function(firebase) {
+                                                if (firebase) {
+                                                    firebase.firebase_admin(function(admin) {
+                                                        if (admin) {
+                                                            const notification_options = {
+                                                                priority: "high",
+                                                                timeToLive: 60 * 60 * 24
+                                                            };
+                                                            admin.messaging().sendToDevice(
+                                                                fcmToken, 
+                                                                {
+                                                                    notification: {
+                                                                        title: "Your attendance is requested.",
+                                                                        body: "You were invited to an event. Check out Rooted now!"
+                                                                    }
+                                                                }, 
+                                                                notification_options
+                                                            )
+                                                            .then( response => {
+                                                                console.log(response);
+                                                            })
+                                                            .catch( error => {
+                                                                console.log(error);
+                                                            });
+                                                        }
+                                                    });
+                                                }
+                                            })
+                                        }
+                                    }
+                                })
+                            }
+                        });
                         res.status(200).json({
                             "status": 200,
                             "success": true,
