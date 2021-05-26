@@ -13,18 +13,14 @@ const jwt                               = require('jsonwebtoken');
 const rp                                = require('request-promise');
 const moment                            = require('moment');
 const async                             = require('async');
-
+const algoliasearch                     = require('algoliasearch');
 const twilio                            = require('twilio');
+
 const mailJet                           = require('node-mailjet').connect('b3711ac51c20213f29f627828b864471', '4b1b0d115a79c620e323ab576e80df26');
+const algoliaClient                     = algoliasearch('7D9VLBWPD7', '79b58968c114b4906074642df97f7910');
+const twilioClient                      = new twilio(configs.twilioAccountSid, configs.twilioAccountAuthToken);
+const Zoom                              = require('zoomus')({ key: configs.zoomKey, secret: configs.zoomSecret });
 
-var twilioClient = new twilio(configs.twilioAccountSid, configs.twilioAccountAuthToken);
-
-var Zoom = require('zoomus')({
-    key: configs.zoomKey,
-    secret: configs.zoomSecret
-   });
-
-   //Use the ApiKey and APISecret from config.js
 const payload = {
     iss: 'z8O78FV9TtG8H9lIxqwR6w',
     exp: ((new Date()).getTime() + 5000)
@@ -38,6 +34,7 @@ var MeetingStatus = {
 }
 
 var activeFunctions = [
+    'algolia_search',
     'accept_meeting', 
     'cancel_meeting',
     'create_event_invite',
@@ -62,6 +59,10 @@ var activeFunctions = [
     'update_meeting', 
     'update_user',    
 ]
+
+var AlgoliaIndexes = {
+    userPhoneNumbers: algoliaClient.initIndex('users_phonenumbers'),
+}
 
 router.use(bodyParser.json({ limit: '500mb' }));
 router.use(bodyParser.urlencoded({ limit: '500mb', extended: true, parameterLimit: 50000 }));
@@ -225,6 +226,8 @@ router.post('/eggman', function(req, res) {
                     "data": null,
                     "error_message": "User does not exist."
                 });
+
+                const algoliaIndex = algoliaClient.initIndex(AlgoliaIndexes.userPhoneNumbers);
 
                 res.status(200).json({
                     "status": 200,
@@ -1129,6 +1132,7 @@ router.post('/eggman', function(req, res) {
                 }
 
                 if (filteredMeetingInvitePhoneNumbers.length == 0) {
+                    
                     meetingInvitePhoneNumbers.push(contact);
                     meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
                     reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
@@ -1535,6 +1539,24 @@ router.post('/eggman', function(req, res) {
 
     // MARK: - MailJet
 
+    // MARK: - Algolia Search Test
+    if (action == 'algolia_search') {
+        let phoneNumber =  req.body.phoneNumber;
+        if (!phoneNumber) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "1 or more parameters are missing. Please try again."
+        });
+        AlgoliaIndexes.userPhoneNumbers.search(phoneNumber).then(({ hits }) => {
+            res.status(200).json({
+                "status": 200,
+                "success": false,
+                "data": hits,
+                "error_message": null
+            });
+        });
+    }
 }); 
 
 function createMeeting(data, callback) {

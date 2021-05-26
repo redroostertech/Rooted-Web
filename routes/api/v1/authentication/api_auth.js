@@ -12,6 +12,8 @@ const randomstring                      = require('randomstring');
 const async                             = require('async');
 const moment                            = require('moment');
 const jwt                               = require('jsonwebtoken');
+const algoliasearch                     = require('algoliasearch');
+const algoliaClient                     = algoliasearch('7D9VLBWPD7', '79b58968c114b4906074642df97f7910');
 
 var oneDay = process.env.oneDay || configs.oneDay;
 var jwtsecret = process.env.jwtsecret || configs.jwtsecret;
@@ -35,6 +37,10 @@ var activeFunctions = [
     'phone_registration',
     'session_check',
 ]
+
+var AlgoliaIndexes = {
+    userPhoneNumbers: algoliaClient.initIndex('users_phonenumbers'),
+}
 
 router.post('/leo', function(req, res) { 
     console.log(req.body);
@@ -389,6 +395,13 @@ router.post('/leo', function(req, res) {
                                 "success": false,
                                 "data": null,
                                 "error_message": error.message
+                            });
+
+                            AlgoliaIndexes.userPhoneNumbers.saveObject({
+                                uid: uid,
+                                phone_number_string: phone_number,
+                            }).then(({ objectID }) => {
+                                console.log(objectID);
                             });
 
                             retrieveUserObject(uid, reference, function(error, data) {
