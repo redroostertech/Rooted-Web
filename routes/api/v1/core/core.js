@@ -1164,8 +1164,8 @@ router.post('/eggman', function(req, res) {
                                                                 fcmToken, 
                                                                 {
                                                                     notification: {
-                                                                        title: "Your attendance is requested.",
-                                                                        body: "You were invited to an event. Check out Rooted now!"
+                                                                        title: "New Event Invite!",
+                                                                        body: "You were invited to " + meeting.meeting_name + " on " + moment(meeting.meeting_date.start_date).format('LLLL') + "."
                                                                     }
                                                                 }, 
                                                                 notification_options
