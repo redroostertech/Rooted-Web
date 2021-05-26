@@ -397,11 +397,13 @@ router.post('/leo', function(req, res) {
                                 "error_message": error.message
                             });
 
-                            AlgoliaIndexes.userPhoneNumbers.saveObject({
+                            AlgoliaIndexes.userPhoneNumbers.saveObjects([{
                                 uid: uid,
                                 phone_number_string: phone_number,
-                            }).then(({ objectID }) => {
-                                console.log(objectID);
+                            }], { autoGenerateObjectIDIfNotExist: true })
+                            .then(({ objectIDs }) => {
+                                console.log('Algolia search');
+                                console.log(objectIDs);
                             });
 
                             retrieveUserObject(uid, reference, function(error, data) {
