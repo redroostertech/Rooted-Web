@@ -699,7 +699,7 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'update_meeting') {
-        if (!req.body.data) return res.status(200).json({
+        if (!req.body.data || !req.body.id || !req.body.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
@@ -707,7 +707,7 @@ router.post('/eggman', function(req, res) {
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
-            updateObject('meetings', req.body.data.key, req.body.data, reference, function(error, data) {
+            retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
@@ -715,13 +715,71 @@ router.post('/eggman', function(req, res) {
                     "error_message": error.message
                 });
 
-                res.status(200).json({
+                if (data.meetings.length === 0) return res.status(200).json({
                     "status": 200,
-                    "success": true,
-                    "data": {
-                        "didProcessComplete": true
-                    },
-                    "error_message": null 
+                    "success": false,
+                    "data": null,
+                    "error_message": "Meeting does not exist."
+                });
+
+                var meeting = data.meetings[0]
+
+                if (meeting.owner_id != req.body.owner_id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "You cannot update this event because you are not an owner of it."
+                });
+
+                let refCollection = reference.collection('meetings');
+                var data;
+                if (typeof req.body.data === 'string') {
+                    data = JSON.parse(req.body.data);
+                } 
+                else {
+                    data = req.body.data;
+                }
+                if (!req.body.id) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": "Something went wrong. Please try again."
+                });
+
+                console.log(data);
+                refCollection
+                .doc(req.body.id)
+                .set(
+                    data, 
+                    { 
+                        merge: true 
+                    }
+                )
+                .then(function() {
+                    retrieveMeetingsById('meetings', req.body.id, reference, function(error, data) {
+                        if (error) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": error.message
+                        });
+        
+                        if (data.meetings.length === 0) return res.status(200).json({
+                            "status": 200,
+                            "success": false,
+                            "data": null,
+                            "error_message": "Meeting does not exist."
+                        });
+
+                        data.didProcessComplete = true
+
+                        res.status(200).json({
+                            "status": 200,
+                            "success": true,
+                            "data": data,
+                            "error_message": null
+                        });
+                    });
                 });
             });
         });
