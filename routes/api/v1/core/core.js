@@ -587,7 +587,7 @@ router.post('/eggman', function(req, res) {
                         meetingInvitePhoneNumbers = new Array();
                     }
 
-                    if (!meeting.is_meeting_public) {
+                    if (meeting.is_meeting_public) {
                         if (!meetingParticipants.includes(req.body.uid)) {
                             meetingParticipants.push(req.body.uid);
                             meetingInvitePhoneNumbers.push({
@@ -624,9 +624,11 @@ router.post('/eggman', function(req, res) {
                         }
                     }
 
-                    meeting.decline_meeting_participants_ids = declineMeetingParticipants.filter(function(participantId) {
-                        return participantId !== req.body.uid
-                    });
+                    if (declineMeetingParticipants) {
+                        meeting.decline_meeting_participants_ids = declineMeetingParticipants.filter(function(participantId) {
+                            return participantId !== req.body.uid
+                        });
+                    }
                     meeting.meeting_participants_ids = meetingParticipants;
                     meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers;
 
@@ -720,12 +722,16 @@ router.post('/eggman', function(req, res) {
                     }
 
                     meeting.decline_meeting_participants_ids = declineMeetingParticipants;
-                    meeting.meeting_participants_ids = meetingParticipants.filter(function(participantId) {
-                        return participantId !== req.body.uid
-                    });
-                    meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers.filter(function(invite) {
-                        return invite.email !== user.email_address && invite.fullName !== user.full_name
-                    });
+                    if (meetingParticipants) {
+                        meeting.meeting_participants_ids = meetingParticipants.filter(function(participantId) {
+                            return participantId !== req.body.uid
+                        });
+                    }
+                    if (meetingInvitePhoneNumbers) {
+                        meeting.meeting_invite_phone_numbers = meetingInvitePhoneNumbers.filter(function(invite) {
+                            return invite.email !== user.email_address && invite.fullName !== user.full_name
+                        });
+                    }
 
                     reference.collection('meetings').doc(meeting.key).set(meeting, { merge: true }).then(function() {
                         res.status(200).json({
