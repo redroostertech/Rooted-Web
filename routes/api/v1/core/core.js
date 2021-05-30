@@ -243,36 +243,87 @@ router.post('/eggman', function(req, res) {
     // MARK: - Meetings
     if (action == 'save_meeting') {
         // let data = JSON.parse(JSON.parse(req.body.data));
-        let data = JSON.parse(req.body.data);
+        let meetingData = JSON.parse(req.body.data);
         console.log('Request Body Data');
-        console.log(data);
+        console.log(meetingData);
 
-        console.log(data.owner_id);
-        if (!data.meeting_date.start_date || !data.meeting_date.end_date || !data.meeting_name || !data.owner_id) return res.status(200).json({
+        console.log(meetingData.owner_id);
+        if (!meetingData.meeting_date.start_date || !meetingData.meeting_date.end_date || !meetingData.meeting_name || !meetingData.owner_id) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
             "error_message": "1 or more parameters are missing. Please try again."
         });
 
-        data._id = randomstring.generate();
-        data.meeting_participants_ids = [data.owner_id];
-        data.meeting_status_id = MeetingStatus.active;
-        data.createdAt = new Date();
-        // data.createdAtString = moment().format();
+        meetingData._id = randomstring.generate();
+        meetingData.meeting_participants_ids = [meetingData.owner_id];
+        meetingData.meeting_status_id = MeetingStatus.active;
+        meetingData.createdAt = new Date();
 
         console.log('\n\nFinished Data\n');
-        console.log(data);
+        console.log(meetingData);
 
         // Get the additional information for user
         getFirebaseFirStorageInstance(res, function(reference) {
             async.parallel({
                 save: function(callback) {
                     let refCollection = reference.collection('meetings');
-                    refCollection.add(data).then(function(docRef) {
+                    refCollection.add(meetingData).then(function(docRef) {
                         console.log("Document written with ID: ", docRef.id);
-                        data.key = docRef.id;
-                        callback(null, data);
+                        meetingData.key = docRef.id;
+                        // Notiy invitees
+                        meetingData.meeting_invite_phone_numbers.forEach(function(contact) {
+                            AlgoliaIndexes.userPhoneNumbers.search(contact.phone).then(({ hits }) => {
+                                console.log(hits);
+                                if (hits.length == 0) {
+                                    return
+                                }
+                                var firstHit = hits[0]
+                                if (firstHit == undefined) {
+                                    return
+                                }
+                
+                                var hitUID = firstHit.uid
+                                if (hitUID != undefined) {
+                                    retrieveUserObject(hitUID, reference, function(error, data) {
+                                        if (data.user.length !== 0) {
+                                            var fcmToken = data.user[0].fcm_token
+                                            if (fcmToken != undefined) {
+                                                main.firebase(function(firebase) {
+                                                    if (firebase) {
+                                                        firebase.firebase_admin(function(admin) {
+                                                            if (admin) {
+                                                                const notification_options = {
+                                                                    priority: "high",
+                                                                    timeToLive: 60 * 60 * 24
+                                                                };
+                                                                admin.messaging().sendToDevice(
+                                                                    fcmToken, 
+                                                                    {
+                                                                        notification: {
+                                                                            title: "New Event Invite!",
+                                                                            body: "You were invited to " + meetingData.meeting_name + " on " + moment(meetingData.meeting_date.start_date).format('LLLL') + "."
+                                                                        }
+                                                                    }, 
+                                                                    notification_options
+                                                                )
+                                                                .then( response => {
+                                                                    console.log(response);
+                                                                })
+                                                                .catch( error => {
+                                                                    console.log(error);
+                                                                });
+                                                            }
+                                                        });
+                                                    }
+                                                })
+                                            }
+                                        }
+                                    })
+                                }
+                            });
+                        });
+                        callback(null, meetingData);
                     }).catch(function (error) {
                         if (error) {
                             console.log("Save error");
@@ -283,7 +334,7 @@ router.post('/eggman', function(req, res) {
                     });
                 },
                 delete_draft: function(callback) {
-                    retrieveDraftMeetingById('draft_meetings', data.id, reference, function(error, result) {
+                    retrieveDraftMeetingById('draft_meetings', meetingData.id, reference, function(error, result) {
 
                         var meeting = result.meetings[0];
                         var deleteDraftResult = new Object;
