@@ -385,7 +385,7 @@ router.post('/eggman', function(req, res) {
             "status": 200,
             "success": false,
             "data": null,
-            "error_message": "Something went wrong. Please try again."
+            "error_message": "Something went wrong. Please try again.dbs"
         });
 
         var startDate; 
@@ -1821,7 +1821,7 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
     async.parallel({
         other_meetings: function(callback) {
             let refCollection = reference.collection(collection);
-            refCollection.where('meeting_participants_ids','array-contains', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
+            refCollection.where('meeting_participants_ids','array-contains', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<", optionalEndDate).get(getOptions).then(function(querySnapshot) {
                 var users = new Array();
 
                 async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
@@ -1956,7 +1956,12 @@ function retrieveUpcomingMeetings(collection, uid, optionalStartDate, optionalEn
 
         my_meetings: function(callback) {
             let refCollection = reference.collection(collection);
-            refCollection.where('owner_id','==', uid).where("meeting_date.start_date", ">", optionalStartDate).where("meeting_date.start_date", "<=", optionalEndDate).get(getOptions).then(function(querySnapshot) {
+            refCollection
+            .where('owner_id','==', uid)
+            .where("meeting_date.start_date", ">=", optionalStartDate)
+            .where("meeting_date.start_date", "<=", optionalEndDate)
+            .get(getOptions)
+            .then(function(querySnapshot) {
                 var users = new Array();
 
                 async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
