@@ -397,9 +397,10 @@ router.post('/eggman', function(req, res) {
 
         var endDate;
         if (!req.body.endDate) {
+            console.log('Adding a day');
             endDate = moment().add(1, 'days').format();
         } else {
-            endDate = moment(req.body.endDate).add(0, 'days').format();
+            endDate = moment(req.body.endDate).subtract(0, 'days').format();
         }
 
         console.log(`
