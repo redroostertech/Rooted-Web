@@ -381,35 +381,15 @@ router.post('/eggman', function(req, res) {
     }
 
     if (action == 'retrieve_upcoming_meetings') {
-        if (!req.body.uid) return res.status(200).json({
+        if (!req.body.uid || !req.body.date || !req.body.endDate) return res.status(200).json({
             "status": 200,
             "success": false,
             "data": null,
             "error_message": "Something went wrong. Please try again.dbs"
         });
 
-        var startDate; 
-        if (!req.body.date) {
-            startDate = moment().subtract(1, 'days').format();
-        } else {
-            startDate = moment(req.body.date).subtract(0, 'days').format();
-        }
-
-        var endDate;
-        if (!req.body.endDate) {
-            console.log('Adding a day');
-            endDate = moment().add(1, 'days').format();
-        } else {
-            endDate = moment(req.body.endDate).subtract(0, 'days').format();
-        }
-
-        console.log(`
-        Start date: ${startDate}\n
-        End date: ${endDate}\n
-        `);
-
         getFirebaseFirStorageInstance(res, function(reference) {
-            retrieveUpcomingMeetings('meetings', req.body.uid, startDate, endDate, reference, function(error, data) {
+            retrieveUpcomingMeetings('meetings', req.body.uid, req.body.date, req.body.endDate, reference, function(error, data) {
                 if (error) return res.status(200).json({
                     "status": 200,
                     "success": false,
