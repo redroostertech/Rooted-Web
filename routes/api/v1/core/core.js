@@ -49,6 +49,7 @@ var activeFunctions = [
     'retrieve_meeting',
     'retrieve_meeting_drafts',
     'retrieve_meeting_for_id',
+    'retrieve_meeting_invites',
     'retrieve_sent_meetings',
     'retrieve_upcoming_meetings',
     'retrieve_user',
@@ -947,6 +948,37 @@ router.post('/eggman', function(req, res) {
                         "data": null,
                         "error_message": error.message
                     });
+                });
+            });
+        });
+    }
+
+    if (action == 'retrieve_meeting_invites') {
+        if (!req.body.phoneNumber || !req.body.date) return res.status(200).json({
+            "status": 200,
+            "success": false,
+            "data": null,
+            "error_message": "Something went wrong. Please try again.dbs"
+        });
+
+        getFirebaseFirStorageInstance(res, function(reference) {
+            retrieveMeetingsInvitedTo('meetings', req.body.phoneNumber, req.body.date, reference, function(error, data) {
+                if (error) return res.status(200).json({
+                    "status": 200,
+                    "success": false,
+                    "data": null,
+                    "error_message": error.message
+                });
+                console.log(`
+                    Response is: ${
+                        data.meetings.length
+                    }
+                `)
+                res.status(200).json({
+                    "status": 200,
+                    "success": true,
+                    "data": data,
+                    "error_message": null
                 });
             });
         });
@@ -3092,6 +3124,146 @@ function retrieveEventInvitesById(collection, id, reference, completionHandler) 
     });  
 }
 
+function retrieveMeetingsInvitedTo(collection, phoneNumber, optionalStartDate, reference, completionHandler) {
+    let refCollection = reference.collection(collection);
+    refCollection
+    .where('meeting_invite_phone_numbers','array-contains', phoneNumber)
+    .where("meeting_date.start_date", ">", optionalStartDate)
+    .get(getOptions)
+    .then(function(querySnapshot) {
+        var users = new Array();
+        async.forEachOf(querySnapshot.docs, function(doc, key, completion) {
+            var userDoc = doc.data();
+            userDoc.key = doc.id;
+
+            // Get the additional information for user
+            async.parallel({
+                owner: function(callback) {
+                    var owner = new Array();
+                    let prefCollection = reference.collection('users');
+                    prefCollection.where('uid','==', userDoc.owner_id).get(getOptions).then(function(querysnapshot) {
+                        async.forEachOf(querysnapshot.docs, function(d, k, c) {
+                            var prefdata = d.data();
+                            prefdata.key = d.id;
+                            owner.push(prefdata);
+                            c();
+                        }, function(_e) {
+                            if (_e) { 
+                                console.log(_e.message);
+                                callback(_e, owner);
+                            } else {
+                                callback(null, owner);
+                            }
+                        });
+                    }).catch(function (error) {
+                        if (error) {
+                            console.log(error.message);
+                            callback(error, null);
+                        }
+                    });
+                },
+                participants: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.meeting_participants_ids, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
+                declined_participants: function(callback) {
+                    var participants = new Array();
+                    let prefCollection = reference.collection('users');
+                    async.forEachOf(userDoc.decline_meeting_participants_ids, function(participantId, k, completion) {
+                        prefCollection.where('uid','==', participantId).get(getOptions).then(function(querysnapshot) {
+                            async.forEachOf(querysnapshot.docs, function(d, l, c) {
+                                var prefdata = d.data();
+                                prefdata.key = d.id;
+                                participants.push(prefdata);
+                                c();
+                            }, function(_e) {
+                                if (_e) { 
+                                    console.log(_e.message);
+                                    completion(_e, participants);
+                                } else {
+                                    completion(null, participants);
+                                }
+                            });
+                        }).catch(function (error) {
+                            if (error) {
+                                console.log(error.message);
+                                callback(error, null);
+                            }
+                        });
+                    }, function(_e) {
+                        if (_e) { 
+                            console.log(_e.message);
+                            callback(_e, participants);
+                        } else {
+                            callback(null, participants);
+                        }
+                    })
+                },
+                activity: function(callback) {
+                    callback();
+                }
+            }, function(error, results) {
+                console.log(results);
+                console.log(error);
+
+                if (error) return completionHandler(error, null);
+
+                if (results.owner) {
+                    userDoc.owner = results.owner;
+                }
+
+                if (results.participants) {
+                    userDoc.participants = results.participants;
+                }
+
+                if (results.declined_participants) {
+                    userDoc.declined_participants = results.declined_participants;
+                }
+
+                users.push(userDoc);
+                completion();
+            });
+        }, function (err) {
+            if (err) return completionHandler(err, null);
+            let data = {
+                "meetings": users.length > 0 ? users.sort((a, b) => b.meeting_date.end_date_timestamp - a.meeting_date.end_date_timestamp).reverse() : users
+            }
+            completionHandler(err, data);
+        });
+    }).catch(function (error) {
+        completionHandler(error, null);
+    });  
+}
+
 let checker = (arr, target) => target.every(v => arr.includes(v));
 
 function updateMeetingForCalendarId(collection, data, id, reference, completionHandler) {
@@ -3146,4 +3318,5 @@ function updateObject(collection, key, object, reference, completionHandler) {
         completionHandler(error, null);
     });
 }
+
 module.exports = router;
