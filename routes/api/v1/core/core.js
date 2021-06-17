@@ -272,58 +272,61 @@ router.post('/eggman', function(req, res) {
                     refCollection.add(meetingData).then(function(docRef) {
                         console.log("Document written with ID: ", docRef.id);
                         meetingData.key = docRef.id;
-                        // Notiy invitees
-                        meetingData.meeting_invite_phone_numbers.forEach(function(contact) {
-                            AlgoliaIndexes.userPhoneNumbers.search(contact.phone).then(({ hits }) => {
-                                console.log(hits);
-                                if (hits.length == 0) {
-                                    return
-                                }
-                                var firstHit = hits[0]
-                                if (firstHit == undefined) {
-                                    return
-                                }
-                
-                                var hitUID = firstHit.uid
-                                if (hitUID != undefined) {
-                                    retrieveUserObject(hitUID, reference, function(error, data) {
-                                        if (data.user.length !== 0) {
-                                            var fcmToken = data.user[0].fcm_token
-                                            if (fcmToken != undefined) {
-                                                main.firebase(function(firebase) {
-                                                    if (firebase) {
-                                                        firebase.firebase_admin(function(admin) {
-                                                            if (admin) {
-                                                                const notification_options = {
-                                                                    priority: "high",
-                                                                    timeToLive: 60 * 60 * 24
-                                                                };
-                                                                admin.messaging().sendToDevice(
-                                                                    fcmToken, 
-                                                                    {
-                                                                        notification: {
-                                                                            title: "New Event Invite!",
-                                                                            body: "You were invited to " + meetingData.meeting_name + " on " + moment(meetingData.meeting_date.start_date).format('LLLL') + "."
-                                                                        }
-                                                                    }, 
-                                                                    notification_options
-                                                                )
-                                                                .then( response => {
-                                                                    console.log(response);
-                                                                })
-                                                                .catch( error => {
-                                                                    console.log(error);
-                                                                });
-                                                            }
-                                                        });
-                                                    }
-                                                })
+                        let meetingInvitePhoneNumbers = meetingData.meeting_invite_phone_numbers;
+                        if (meetingInvitePhoneNumbers != undefined) {
+                            // Notiy invitees
+                            meetingData.meeting_invite_phone_numbers.forEach(function(contact) {
+                                AlgoliaIndexes.userPhoneNumbers.search(contact.phone).then(({ hits }) => {
+                                    console.log(hits);
+                                    if (hits.length == 0) {
+                                        return
+                                    }
+                                    var firstHit = hits[0]
+                                    if (firstHit == undefined) {
+                                        return
+                                    }
+                    
+                                    var hitUID = firstHit.uid
+                                    if (hitUID != undefined) {
+                                        retrieveUserObject(hitUID, reference, function(error, data) {
+                                            if (data.user.length !== 0) {
+                                                var fcmToken = data.user[0].fcm_token
+                                                if (fcmToken != undefined) {
+                                                    main.firebase(function(firebase) {
+                                                        if (firebase) {
+                                                            firebase.firebase_admin(function(admin) {
+                                                                if (admin) {
+                                                                    const notification_options = {
+                                                                        priority: "high",
+                                                                        timeToLive: 60 * 60 * 24
+                                                                    };
+                                                                    admin.messaging().sendToDevice(
+                                                                        fcmToken, 
+                                                                        {
+                                                                            notification: {
+                                                                                title: "New Event Invite!",
+                                                                                body: "You were invited to " + meetingData.meeting_name + " on " + moment(meetingData.meeting_date.start_date).format('LLLL') + "."
+                                                                            }
+                                                                        }, 
+                                                                        notification_options
+                                                                    )
+                                                                    .then( response => {
+                                                                        console.log(response);
+                                                                    })
+                                                                    .catch( error => {
+                                                                        console.log(error);
+                                                                    });
+                                                                }
+                                                            });
+                                                        }
+                                                    })
+                                                }
                                             }
-                                        }
-                                    })
-                                }
+                                        })
+                                    }
+                                });
                             });
-                        });
+                        }
                         callback(null, meetingData);
                     }).catch(function (error) {
                         if (error) {
@@ -1734,6 +1737,8 @@ router.post('/eggman', function(req, res) {
             });
         });
     }
+
+    // MARK: - Calendar Share
 }); 
 
 function createMeeting(data, callback) {
@@ -1746,13 +1751,15 @@ function createMeeting(data, callback) {
 
     var agendaItems = data.agenda_items;
     var newAgendaItems = new Array();
-    agendaItems.forEach(function(agendaItem) {
-        var item = {
-            item_name: agendaItem.item_name,
-            order: agendaItem.order
-        }
-        newAgendaItems.push(item);
-    });
+    if (agendaItems != undefined) {
+        agendaItems.forEach(function(agendaItem) {
+            var item = {
+                item_name: agendaItem.item_name,
+                order: agendaItem.order
+            }
+            newAgendaItems.push(item);
+        });
+    }
     
     data.agenda_items = newAgendaItems;
     data.meeting_participants_ids = [data.owner_id];
