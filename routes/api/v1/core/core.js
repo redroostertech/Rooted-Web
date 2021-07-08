@@ -389,7 +389,7 @@ router.post('/eggman', function(req, res) {
             "status": 200,
             "success": false,
             "data": null,
-            "error_message": "Something went wrong. Please try again.dbs"
+            "error_message": "Something went wrong. Please try again"
         });
 
         getFirebaseFirStorageInstance(res, function(reference) {
